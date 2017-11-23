@@ -5232,6 +5232,18 @@ static Sys_var_uint Sys_checkpoint_mts_group(
 #endif /* DBUG_OFF */
 #endif /* HAVE_REPLICATION */
 
+static Sys_var_uint Sys_sleep_seconds_before_master_send_binlog(
+        "sleep_seconds_before_master_send_binlog", "wait time befor master send binlog to slave"
+                " use 0 to disable sleep."
+                " Happy with it",
+        GLOBAL_VAR(sleep_seconds_before_master_send_binlog), CMD_LINE(REQUIRED_ARG),
+        VALID_RANGE(0, UINT_MAX), DEFAULT(0), BLOCK_SIZE(1));
+static Sys_var_uint Sys_sleep_seconds_before_slave_reply_ack(
+        "sleep_seconds_before_slave_reply_ack", "wait time befor slave replay ack info to master"
+                " use 0 to disable sleep."
+                " happy with it",
+        GLOBAL_VAR(sleep_seconds_before_slave_reply_ack), CMD_LINE(REQUIRED_ARG),
+        VALID_RANGE(0, UINT_MAX), DEFAULT(0), BLOCK_SIZE(1));
 static Sys_var_uint Sys_sync_binlog_period(
        "sync_binlog", "Synchronously flush binary log to disk after"
        " every #th write to the file. Use 0 to disable synchronous"

@@ -127,6 +127,7 @@ int repl_semi_slave_queue_event(Binlog_relay_IO_param *param,
       should not cause the slave IO thread to stop, and the error
       messages are already reported.
     */
+    sleep(sleep_seconds_before_slave_reply_ack);
     (void) repl_semisync.slaveReply(param->mysql,
                                     param->master_log_name,
                                     param->master_log_pos);

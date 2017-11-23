@@ -183,6 +183,10 @@ extern my_bool relay_log_recovery;
 extern uint sync_binlog_period, sync_relaylog_period,
             sync_relayloginfo_period, sync_masterinfo_period,
             opt_mts_checkpoint_period, opt_mts_checkpoint_group;
+//this two variables just for qa test semi-sync replication
+
+extern int sleep_seconds_before_slave_reply_ack,sleep_seconds_before_master_send_binlog;
+
 extern ulong opt_tc_log_size, tc_log_max_pages_used, tc_log_page_size;
 extern ulong tc_log_page_waits;
 extern my_bool relay_log_purge, opt_innodb_safe_binlog, opt_innodb;

@@ -301,6 +301,12 @@ LEX_STRING opt_init_connect, opt_init_slave;
 
 /* Global variables */
 
+/*just for qa test semi-sync replication
+ *
+ */
+int sleep_seconds_before_slave_reply_ack;
+int sleep_seconds_before_master_send_binlog;
+
 bool opt_bin_log, opt_ignore_builtin_innodb= 0;
 bool opt_general_log, opt_slow_log, opt_general_log_raw;
 ulonglong log_output_options;
@@ -5582,6 +5588,14 @@ struct my_option my_long_options[]=
    "Option used by mysql-test for debugging and testing of replication.",
    &abort_slave_event_count,  &abort_slave_event_count,
    0, GET_INT, REQUIRED_ARG, 0, 0, 0, 0, 0, 0},
+  {"sleep-seconds-before-slave-reply-ack", 0,
+   "Option used by qa to test semi-sync replication.",
+   &sleep_seconds_before_slave_reply_ack,  &sleep_seconds_before_slave_reply_ack,
+   0, GET_INT, REQUIRED_ARG, 0, 0, 0, 0, 0, 0},
+  {"sleep-seconds-before-master-send-binlog", 0,
+   "Option used by qa to test semi-sync replication.",
+   &sleep_seconds_before_master_send_binlog,  &sleep_seconds_before_master_send_binlog,
+   0, GET_INT, REQUIRED_ARG, 0, 0, 0, 0, 0, 0},
 #endif /* HAVE_REPLICATION */
   {"allow-suspicious-udfs", 0,
    "Allows use of UDFs consisting of only one symbol xxx() "
@@ -6972,6 +6986,10 @@ To see what values a running MySQL server is using, type\n\
 
 static int mysql_init_variables(void)
 {
+  /*this two variables just for qa test semi-sync replication*/
+  sleep_seconds_before_master_send_binlog = 0;
+  sleep_seconds_before_slave_reply_ack = 0;
+
   /* Things reset to zero */
   opt_skip_slave_start= opt_reckless_slave = 0;
   mysql_home[0]= pidfile_name[0]= 0;

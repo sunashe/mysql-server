@@ -768,6 +768,7 @@ public:
     lock_binlog_end_pos();
     if (pos > binlog_end_pos)
       binlog_end_pos= pos;
+    sleep(sleep_seconds_before_master_send_binlog);
     signal_update();
     unlock_binlog_end_pos();
   }
