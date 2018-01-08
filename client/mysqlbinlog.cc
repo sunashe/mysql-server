@@ -74,6 +74,143 @@ using std::max;
 static
 std::map<std::string, std::string> map_mysqlbinlog_rewrite_db;
 
+
+/**
+ * this function
+ *
+ */
+
+char global_log_file_name[FN_REFLEN + 1];
+
+bool semi_sync=true;
+bool semi_sync_need_reply;
+
+/* Constants in network packet header. */
+const unsigned char kPacketMagicNum = 0xef;
+const unsigned char kPacketFlagSync = 0x01;
+
+int slaveReadSyncHeader( char *header,
+                                           unsigned long total_len,
+                                           bool  *need_reply,
+                                            char **payload,
+                                           unsigned long *payload_len)
+{
+
+  int read_res = 0;
+
+  if ((unsigned char)(header[0]) == kPacketMagicNum)
+  {
+    *need_reply  = (header[1] & kPacketFlagSync);
+    *payload_len = total_len - 2;
+    *payload     = header + 2;
+
+  }
+  else
+  {
+
+    read_res = -1;
+  }
+
+  return  read_res;
+}
+
+int repl_semi_slave_read_event(
+                                char *packet, unsigned long len,
+                                char **event_buf, unsigned long *event_len)
+{
+  if (semi_sync)
+    return slaveReadSyncHeader(packet, len,
+                                             &semi_sync_need_reply,
+                                             event_buf, event_len);
+  *event_buf= packet;
+  *event_len= len;
+  return 0;
+}
+
+#define REPLY_MAGIC_NUM_LEN 1
+#define REPLY_BINLOG_POS_LEN 8
+#define REPLY_BINLOG_NAME_LEN (FN_REFLEN + 1)
+#define REPLY_MESSAGE_MAX_LENGTH \
+  (REPLY_MAGIC_NUM_LEN + REPLY_BINLOG_POS_LEN + REPLY_BINLOG_NAME_LEN)
+#define REPLY_MAGIC_NUM_OFFSET 0
+#define REPLY_BINLOG_POS_OFFSET (REPLY_MAGIC_NUM_OFFSET + REPLY_MAGIC_NUM_LEN)
+#define REPLY_BINLOG_NAME_OFFSET (REPLY_BINLOG_POS_OFFSET + REPLY_BINLOG_POS_LEN)
+
+int slaveReply(MYSQL *mysql,
+               char *binlog_filename,
+               my_off_t binlog_filepos)
+{
+  //const char *kWho = "ReplSemiSyncSlave::slaveReply";
+  NET *net= &mysql->net;
+  uchar reply_buffer[REPLY_MAGIC_NUM_LEN
+                     + REPLY_BINLOG_POS_LEN
+                     + REPLY_BINLOG_NAME_LEN];
+  int reply_res;
+  size_t name_len = strlen(binlog_filename);
+
+  /*
+  function_enter(kWho);
+
+  DBUG_EXECUTE_IF("rpl_semisync_before_send_ack",
+                  {
+                    const char act[]=
+                            "now SIGNAL sending_ack WAIT_FOR continue";
+                    DBUG_ASSERT(opt_debug_sync_timeout > 0);
+                    DBUG_ASSERT(!debug_sync_set_action(current_thd,
+                                                       STRING_WITH_LEN(act)));
+                  };);
+  */
+
+
+  /* Prepare the buffer of the reply. */
+  reply_buffer[REPLY_MAGIC_NUM_OFFSET] = kPacketMagicNum;
+  int8store(reply_buffer + REPLY_BINLOG_POS_OFFSET, binlog_filepos);
+  memcpy(reply_buffer + REPLY_BINLOG_NAME_OFFSET,
+         binlog_filename,
+         name_len + 1 /* including trailing '\0' */);
+
+
+
+  net_clear(net, 0);
+  /* Send the reply. */
+  reply_res = my_net_write(net, reply_buffer,
+                           name_len + REPLY_BINLOG_NAME_OFFSET);
+  if (!reply_res)
+  {
+    reply_res = net_flush(net);
+    if (reply_res)
+    {}
+     // sql_print_error("Semi-sync slave net_flush() reply failed");
+  }
+  else
+  {
+   // sql_print_error("Semi-sync slave send reply failed: %s (%d)",
+    //                net->last_error, net->last_errno);
+  }
+
+  return reply_res;
+}
+
+
+static uchar *net_store_length_fast(uchar *packet, size_t length)
+{
+  if (length < 251)
+  {
+    *packet=(uchar) length;
+    return packet+1;
+  }
+  *packet++=252;
+  int2store(packet,(uint) length);
+  return packet+2;
+}
+
+uchar *net_store_data(uchar *to, const uchar *from, size_t length)
+{
+  to=net_store_length_fast(to,length);
+  memcpy(to,from,length);
+  return to+length;
+}
+
 /**
   The function represents Log_event delete wrapper
   to reset possibly active temp_buf member.
@@ -1723,6 +1860,14 @@ end:
   */
   if (ev)
   {
+    //if semi_sync_need_reply is true,replay ack to master
+    if(semi_sync_need_reply)
+    {
+      //
+      slaveReply(mysql,global_log_file_name,ev->common_header->log_pos);
+
+      semi_sync_need_reply=false;//
+    }
     if (opt_remote_proto != BINLOG_LOCAL)
       ev->temp_buf= 0;
     if (destroy_evt) /* destroy it later if not set (ignored table map) */
@@ -2519,6 +2664,8 @@ static int get_dump_flags()
   @retval OK_STOP No error, but the end of the specified range of
   events to process has been reached and the program should terminate.
 */
+
+
 static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
                                            const char* logname)
 {
@@ -2574,6 +2721,65 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
     error("Log name too long.");
     DBUG_RETURN(ERROR_STOP);
   }
+  //如果想通过show slave hosts 看到此从机，需要进行注册
+  //register slave on master, copy from rpl_slave.cc:register_slave_on_master
+  {
+    uchar buf[1024], *pos= buf;
+    size_t report_host_len=0, report_user_len=0, report_password_len=0;
+    DBUG_ENTER("register_slave_on_master");
+
+    //*suppress_warnings= FALSE;
+    if (host)
+      report_host_len= strlen(host);
+    if (report_host_len > HOSTNAME_LENGTH)
+    {
+
+    }
+
+    if (user)
+      report_user_len= strlen(user);
+    if (report_user_len > USERNAME_LENGTH)
+    {
+
+    }
+
+    if (pass)
+      report_password_len= strlen(pass);
+    if (report_password_len > MAX_PASSWORD_LENGTH)
+    {
+
+    }
+
+    int4store(pos, server_id); pos+= 4;
+    pos= net_store_data(pos, (uchar*) host, report_host_len);
+    pos= net_store_data(pos, (uchar*) user, report_user_len);
+    pos= net_store_data(pos, (uchar*) pass, report_password_len);
+    int2store(pos, (uint16) port); pos+= 2;
+    /*
+      Fake rpl_recovery_rank, which was removed in BUG#13963,
+      so that this server can register itself on old servers,
+      see BUG#49259.
+     */
+    int4store(pos, /* rpl_recovery_rank */ 0);    pos+= 4;
+    /* The master will fill in master_id */
+    int4store(pos, 0);                    pos+= 4;
+
+    if (simple_command(mysql, COM_REGISTER_SLAVE, buf, (size_t) (pos- buf), 0))
+    {
+
+    }
+   // DBUG_RETURN(0);
+  }
+  //semi-sync setup
+  char *query;
+  query= "SET @rpl_semi_sync_slave= 1";
+  if(semi_sync)
+  {
+
+    mysql_query(mysql,query);
+  }
+
+
   const size_t BINLOG_NAME_INFO_SIZE= logname_len= tlen;
   
   if (opt_remote_proto == BINLOG_DUMP_NON_GTID)
@@ -2678,23 +2884,40 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
       ROTATE_EVENT or FORMAT_DESCRIPTION_EVENT
     */
 
-    type= (Log_event_type) net->read_pos[1 + EVENT_TYPE_OFFSET];
+    //check event type later if semim-sync is true
+      if(!semi_sync)
+      {
+          type= (Log_event_type) net->read_pos[1 + EVENT_TYPE_OFFSET];
+          /*
+     Ignore HEARBEAT events. They can show up if mysqlbinlog is
+     running with:
 
-    /*
-      Ignore HEARBEAT events. They can show up if mysqlbinlog is
-      running with:
+       --read-from-remote-server
+       --read-from-remote-master=BINLOG-DUMP-GTIDS'
+       --stop-never
+       --stop-never-slave-server-id
 
-        --read-from-remote-server
-        --read-from-remote-master=BINLOG-DUMP-GTIDS'
-        --stop-never
-        --stop-never-slave-server-id
+     i.e., acting as a fake slave.
+   */
+          if (type == binary_log::HEARTBEAT_LOG_EVENT)
+              continue;
+      }
 
-      i.e., acting as a fake slave.
-    */
-    if (type == binary_log::HEARTBEAT_LOG_EVENT)
-      continue;
+
+
     event_buf= (char *) net->read_pos + 1;
     event_len= len - 1;
+
+      //semi sync plugin should rebuild event_buf and event_len
+    if(semi_sync)
+    {
+      repl_semi_slave_read_event((char*)mysql->net.read_pos + 1,event_len,&event_buf,&event_len);
+      type= (Log_event_type)event_buf[EVENT_TYPE_OFFSET];
+      if (type == binary_log::HEARTBEAT_LOG_EVENT)
+        continue;
+    }
+
+
     if (rewrite_db_filter(&event_buf, &event_len, glob_description_event))
     {
       error("Got a fatal error while applying rewrite db filter.");
@@ -2751,6 +2974,9 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
             my_stpcpy(log_file_name, rev->new_log_ident);
           }
         }
+
+
+        my_stpcpy(global_log_file_name,rev->new_log_ident);
 
         if (rev->common_header->when.tv_sec == 0)
         {
