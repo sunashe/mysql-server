@@ -7669,6 +7669,25 @@ ER_TABLE_REFERENCED
 ER_PARTITION_ENGINE_DEPRECATED_FOR_TABLE
   eng "The partition engine, used by table '%-.192s.%-.192s', is deprecated and will be removed in a future release. Please use native partitioning instead."
 
+start-error-number 5000
+
+ER_MAYBE_NOT_INNODB_TABLE 08004
+  eng "This maybe not innodb_table"
+
+ER_COPY_TABLE_AND_NEED_SHARED_LOCK 08004
+  eng "copy table and need shared lock"
+
+ER_INPLACE_AND_NO_LOCK 08004
+  eng "inplace and no lock"
+
+ER_INPLACE_AND_NO_LOCK_AFTER_PREPARE 08004
+  eng "inplace and no lock after prepare"
+
+ER_INPLACE_AND_SHARED_LOCK 08004
+  eng "inplace and need shared lock"
+
+ER_INPLACE_NOT_SUPPORTED 08004
+  eng "copy and need shared lock"
 #
 #  End of 5.7 error messages.
 #

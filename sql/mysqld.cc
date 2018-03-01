@@ -300,6 +300,8 @@ static bool binlog_format_used= false;
 LEX_STRING opt_init_connect, opt_init_slave;
 
 /* Global variables */
+//added by sunashe
+my_bool explain_ddl;
 
 bool opt_bin_log, opt_ignore_builtin_innodb= 0;
 bool opt_general_log, opt_slow_log, opt_general_log_raw;
@@ -5934,6 +5936,9 @@ struct my_option my_long_options[]=
    "The option will be removed in a future release.",
    0, 0, 0, GET_BOOL, OPT_ARG,
    0, 0, 0, 0, 0, 0},
+  {"explain-ddl",0,"option used by explain ddl",&explain_ddl,&explain_ddl,0,GET_BOOL,OPT_ARG, 0, 0, 0, 0, 0,0},
+
+  {"session-explain-ddl",0,"option used by explain ddl",&global_system_variables.explain_ddl, &global_system_variables.explain_ddl,0,GET_BOOL, OPT_ARG, 0, 0, 0, 0, 0,0},
 
   {0, 0, 0, 0, 0, 0, GET_NO_ARG, NO_ARG, 0, 0, 0, 0, 0, 0}
 };
@@ -6973,6 +6978,7 @@ To see what values a running MySQL server is using, type\n\
 static int mysql_init_variables(void)
 {
   /* Things reset to zero */
+  explain_ddl=0;
   opt_skip_slave_start= opt_reckless_slave = 0;
   mysql_home[0]= pidfile_name[0]= 0;
   myisam_test_invalid_symlink= test_if_data_home_dir;

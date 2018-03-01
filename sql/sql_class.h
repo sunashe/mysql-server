@@ -564,6 +564,7 @@ typedef struct system_variables
     'COLUMN_TYPE' field.
   */
   my_bool show_old_temporals;
+    my_bool explain_ddl;
 } SV;
 
 

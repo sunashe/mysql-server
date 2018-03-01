@@ -147,6 +147,7 @@ extern my_bool super_read_only, opt_super_readonly;
 extern my_bool lower_case_file_system;
 extern ulonglong slave_rows_search_algorithms_options;
 extern my_bool opt_require_secure_transport;
+extern my_bool  explain_ddl;
 
 #ifdef HAVE_REPLICATION
 extern my_bool opt_slave_preserve_commit_order;

@@ -9636,7 +9636,43 @@ bool mysql_alter_table(THD *thd, const char *new_db, const char *new_name,
     enum_alter_inplace_result inplace_supported=
       table->file->check_if_supported_inplace_alter(altered_table,
                                                     &ha_alter_info);
+    if(thd->variables.explain_ddl)
+    {
+      //进行ddl方式判断
+      switch(inplace_supported)
+      {
+        case HA_ALTER_INPLACE_EXCLUSIVE_LOCK: {
+            my_error(ER_MAYBE_NOT_INNODB_TABLE, MYF(0));
+            goto err_new_table_cleanup;
+            break;
+        }
+        case HA_ALTER_INPLACE_NO_LOCK:
+        {
+          my_error(ER_INPLACE_AND_NO_LOCK,MYF(0));
+          goto err_new_table_cleanup;
+          break;
+        }
+        case HA_ALTER_INPLACE_NO_LOCK_AFTER_PREPARE:{
+            my_error(ER_INPLACE_AND_NO_LOCK_AFTER_PREPARE,MYF(0));
+            goto err_new_table_cleanup;
+            break;
+          }
 
+        case HA_ALTER_INPLACE_NOT_SUPPORTED:
+        {
+          my_error(ER_INPLACE_NOT_SUPPORTED,MYF(0));
+          goto err_new_table_cleanup;
+          break;
+        }
+
+        default:
+        {
+          goto err_new_table_cleanup;
+          break;
+        }
+
+      }
+    }
     switch (inplace_supported) {
     case HA_ALTER_INPLACE_EXCLUSIVE_LOCK:
       // If SHARED lock and no particular algorithm was requested, use COPY.

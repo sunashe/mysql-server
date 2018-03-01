@@ -5673,3 +5673,17 @@ static Sys_var_charptr Sys_disabled_storage_engines(
        READ_ONLY GLOBAL_VAR(opt_disabled_storage_engines),
        CMD_LINE(REQUIRED_ARG), IN_SYSTEM_CHARSET,
        DEFAULT(""));
+
+/*static Sys_var_mybool Sys_explain_ddl(
+        "explain_ddl",
+        "open explain ddl",
+        GLOBAL_VAR(explain_ddl),
+        CMD_LINE(OPT_ARG),DEFAULT(FALSE), NO_MUTEX_GUARD, NOT_IN_BINLOG,
+        ON_CHECK(0), ON_UPDATE(0));*/
+
+static Sys_var_mybool Sys_session_explain_ddl(
+        "explain_ddl",
+        "open explain ddl",
+        SESSION_VAR(explain_ddl),
+        CMD_LINE(OPT_ARG),DEFAULT(FALSE), NO_MUTEX_GUARD, NOT_IN_BINLOG,
+        ON_CHECK(0), ON_UPDATE(0));
