@@ -7671,23 +7671,35 @@ ER_PARTITION_ENGINE_DEPRECATED_FOR_TABLE
 
 start-error-number 5000
 
-ER_MAYBE_NOT_INNODB_TABLE 08004
-  eng "This maybe not innodb_table"
+ER_EXPLAIN_DDL_ERROR EPDDL
+  eng "explain ddl unknown error."
 
-ER_COPY_TABLE_AND_NEED_SHARED_LOCK 08004
-  eng "copy table and need shared lock"
+ER_MAYBE_NOT_INNODB_TABLE EPDDL
+  eng "This maybe not innodb_table."
 
-ER_INPLACE_AND_NO_LOCK 08004
-  eng "inplace and no lock"
+ER_COPY_TABLE_AND_NEED_SHARED_LOCK EPDDL
+  eng "copy table and need shared lock."
 
-ER_INPLACE_AND_NO_LOCK_AFTER_PREPARE 08004
-  eng "inplace and no lock after prepare"
+ER_INPLACE_AND_NO_LOCK EPDDL
+  eng "inplace and no lock."
 
-ER_INPLACE_AND_SHARED_LOCK 08004
-  eng "inplace and need shared lock"
+ER_INPLACE_AND_NO_LOCK_AFTER_PREPARE EPDDL
+  eng "inplace and no lock after prepare."
 
-ER_INPLACE_NOT_SUPPORTED 08004
-  eng "copy and need shared lock"
+ER_INPLACE_REBUILD_AND_NO_LOCK_AFTER_PREPARE EPDDL
+  eng "inplace  rebuild table  and no lock after  prepare."
+
+ER_INPLACE_NO_REBUILD_AND_NO_LOCK_AFTER_PREPARE EPDDL
+  eng "inplace no rebuild table and no lock after prepare. "
+
+ER_INPLACE_AND_SHARED_LOCK EPDDL
+  eng "inplace and need shared lock."
+
+ER_INPLACE_NOT_SUPPORTED EPDDL
+  eng "copy and need shared lock."
+
+ER_UNKNOWN_DDL_TYPE EPDDL
+  eng "unknown ddl type,please conncat DBA."
 #
 #  End of 5.7 error messages.
 #
