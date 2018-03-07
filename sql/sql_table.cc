@@ -9643,8 +9643,12 @@ bool mysql_alter_table(THD *thd, const char *new_db, const char *new_name,
 
     if(thd->variables.explain_ddl)
     {
-        //check no innodb tables;在innodb类型的表中，不可能返回如下这种结果，单独处理错误类型
-        //进行ddl方式判断
+        /*explain ddl
+         *todo：
+         * 1，时间预测模型
+         *
+         */
+
       switch(inplace_supported)
       {
           case HA_ALTER_ERROR:
