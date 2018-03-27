@@ -8907,6 +8907,133 @@ private:
   const MDL_key m_key;
 };
 
+//check whether add fulltext index
+
+bool
+whether_add_fulltext_index(Alter_inplace_info* ha_alter_info)
+{
+    bool add_fts_idx=false;
+
+    for (int i = 0; i < ha_alter_info->index_add_count; i++) {
+        const KEY *key = &ha_alter_info->key_info_buffer[
+                ha_alter_info->index_add_buffer[i]];
+
+        if (key->flags & HA_FULLTEXT) {
+            /* The column length does not matter for
+            fulltext search indexes. But, UNIQUE
+            fulltext indexes are not supported. */
+            DBUG_ASSERT(!(key->flags & HA_NOSAME));
+            DBUG_ASSERT(!(key->flags & HA_KEYFLAG_MASK
+                          & ~(HA_FULLTEXT
+                              | HA_PACK_KEY
+                              | HA_BINARY_PACK_KEY)));
+            add_fts_idx = true;
+          //  continue;
+        }
+    }
+
+    return add_fts_idx;
+}
+
+
+/** Determine if fulltext indexes exist in a given table.
+@param table MySQL table
+@return whether fulltext indexes exist on the table */
+static
+bool
+innobase_fulltext_exist(
+/*====================*/
+        const TABLE*	table)
+{
+  for (uint i = 0; i < table->s->keys; i++) {
+    if (table->key_info[i].flags & HA_FULLTEXT) {
+      return(true);
+    }
+  }
+
+  return(false);
+}
+
+
+/** Operations for creating secondary indexes (no rebuild needed) */
+static const Alter_inplace_info::HA_ALTER_FLAGS INNOBASE_ONLINE_CREATE
+        = Alter_inplace_info::ADD_INDEX
+          | Alter_inplace_info::ADD_UNIQUE_INDEX
+          | Alter_inplace_info::ADD_SPATIAL_INDEX;
+
+/** Operations for rebuilding a table in place */
+static const Alter_inplace_info::HA_ALTER_FLAGS INNOBASE_ALTER_REBUILD
+        = Alter_inplace_info::ADD_PK_INDEX
+          | Alter_inplace_info::DROP_PK_INDEX
+          | Alter_inplace_info::CHANGE_CREATE_OPTION
+          /* CHANGE_CREATE_OPTION needs to check innobase_need_rebuild() */
+          | Alter_inplace_info::ALTER_COLUMN_NULLABLE
+          | Alter_inplace_info::ALTER_COLUMN_NOT_NULLABLE
+          | Alter_inplace_info::ALTER_STORED_COLUMN_ORDER
+          | Alter_inplace_info::DROP_STORED_COLUMN
+          | Alter_inplace_info::ADD_STORED_BASE_COLUMN
+          | Alter_inplace_info::RECREATE_TABLE
+/*
+| Alter_inplace_info::ALTER_STORED_COLUMN_TYPE
+*/
+;
+
+/** Operations that require changes to data */
+static const Alter_inplace_info::HA_ALTER_FLAGS INNOBASE_ALTER_DATA
+        = INNOBASE_ONLINE_CREATE | INNOBASE_ALTER_REBUILD;
+
+/** Operations for altering a table that InnoDB does not care about */
+static const Alter_inplace_info::HA_ALTER_FLAGS INNOBASE_INPLACE_IGNORE
+        = Alter_inplace_info::ALTER_COLUMN_DEFAULT
+          | Alter_inplace_info::ALTER_COLUMN_COLUMN_FORMAT
+          | Alter_inplace_info::ALTER_COLUMN_STORAGE_TYPE
+          | Alter_inplace_info::ALTER_VIRTUAL_GCOL_EXPR
+          | Alter_inplace_info::ALTER_RENAME;
+
+/** Operations on foreign key definitions (changing the schema only) */
+static const Alter_inplace_info::HA_ALTER_FLAGS INNOBASE_FOREIGN_OPERATIONS
+        = Alter_inplace_info::DROP_FOREIGN_KEY
+          | Alter_inplace_info::ADD_FOREIGN_KEY;
+
+/** Operations that InnoDB cares about and can perform without rebuild */
+static const Alter_inplace_info::HA_ALTER_FLAGS INNOBASE_ALTER_NOREBUILD
+        = INNOBASE_ONLINE_CREATE
+          | INNOBASE_FOREIGN_OPERATIONS
+          | Alter_inplace_info::DROP_INDEX
+          | Alter_inplace_info::DROP_UNIQUE_INDEX
+          | Alter_inplace_info::RENAME_INDEX
+          | Alter_inplace_info::ALTER_COLUMN_NAME
+          | Alter_inplace_info::ALTER_COLUMN_EQUAL_PACK_LENGTH
+          | Alter_inplace_info::ALTER_INDEX_COMMENT
+          | Alter_inplace_info::ADD_VIRTUAL_COLUMN
+          | Alter_inplace_info::DROP_VIRTUAL_COLUMN
+          | Alter_inplace_info::ALTER_VIRTUAL_COLUMN_ORDER;
+/* | Alter_inplace_info::ALTER_VIRTUAL_COLUMN_TYPE; */
+
+
+bool
+innobase_need_rebuild(
+/*==================*/
+        const Alter_inplace_info*  ha_alter_info)
+{
+  Alter_inplace_info::HA_ALTER_FLAGS alter_inplace_flags =
+          ha_alter_info->handler_flags & ~(INNOBASE_INPLACE_IGNORE);
+
+  if (alter_inplace_flags
+      == Alter_inplace_info::CHANGE_CREATE_OPTION
+      && !(ha_alter_info->create_info->used_fields
+           & (HA_CREATE_USED_ROW_FORMAT
+              | HA_CREATE_USED_KEY_BLOCK_SIZE
+              | HA_CREATE_USED_TABLESPACE))) {
+    /* Any other CHANGE_CREATE_OPTION than changing
+    ROW_FORMAT, KEY_BLOCK_SIZE or TABLESPACE can be done
+    without rebuilding the table. */
+    return(false);
+  }
+
+  return(!!(ha_alter_info->handler_flags & INNOBASE_ALTER_REBUILD));
+}
+
 
 /**
   Alter table
@@ -9640,14 +9767,31 @@ bool mysql_alter_table(THD *thd, const char *new_db, const char *new_name,
 
 
 
-
     if(thd->variables.explain_ddl)
     {
-        /*explain ddl
-         *todo：
-         * 1，时间预测模型
-         *
-         */
+      bool need_rebuild; //check rebuild needed.
+      if(whether_add_fulltext_index(&ha_alter_info))
+      {
+        if(innobase_fulltext_exist(altered_table))
+        {
+          need_rebuild=false;
+        }
+        else
+        {
+          need_rebuild=true;
+        }
+      }
+      else
+      {
+        if(innobase_need_rebuild(&ha_alter_info))
+        {
+          need_rebuild=true;
+        }
+        else
+        {
+          need_rebuild=false;
+        }
+      }
 
       switch(inplace_supported)
       {
@@ -9667,6 +9811,7 @@ bool mysql_alter_table(THD *thd, const char *new_db, const char *new_name,
 
           case HA_ALTER_INPLACE_EXCLUSIVE_LOCK:
           {
+
               my_error(ER_MAYBE_NOT_INNODB_TABLE, MYF(0));//在innodb表中不会返回这种情况。
               goto err_new_table_cleanup;
               break;
@@ -9675,15 +9820,29 @@ bool mysql_alter_table(THD *thd, const char *new_db, const char *new_name,
           case HA_ALTER_INPLACE_SHARED_LOCK:
           case HA_ALTER_INPLACE_SHARED_LOCK_AFTER_PREPARE:
           {
-              my_error(ER_INPLACE_AND_SHARED_LOCK,MYF(0));
+              if(need_rebuild)
+              {
+                my_error(ER_INPLACE_REBUILD_AND_SHARED_LOCK,MYF(0));
+              }
+              else
+              {
+                my_error(ER_INPLACE_NO_REBUILD_AND_SHARED_LOCK,MYF(0));
+              }
+
               goto err_new_table_cleanup;
               break;
           }
 
           case HA_ALTER_INPLACE_NO_LOCK_AFTER_PREPARE:
           {
-
-              my_error(ER_INPLACE_AND_NO_LOCK_AFTER_PREPARE,MYF(0)); //比如增加字段
+              if(need_rebuild)
+              {
+                my_error(ER_INPLACE_REBUILD_AND_NO_LOCK_AFTER_PREPARE,MYF(0));
+              }
+              else
+              {
+                my_error(ER_INPLACE_NO_REBUILD_AND_NO_LOCK_AFTER_PREPARE, MYF(0));
+              }
               goto err_new_table_cleanup;
               break;
           }
@@ -9700,8 +9859,6 @@ bool mysql_alter_table(THD *thd, const char *new_db, const char *new_name,
               goto err_new_table_cleanup;
               break;
           }
-
-
 
       }
     }

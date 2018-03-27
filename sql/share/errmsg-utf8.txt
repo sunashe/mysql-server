@@ -7687,19 +7687,22 @@ ER_INPLACE_AND_NO_LOCK_AFTER_PREPARE EPDDL
   eng "inplace and no lock after prepare."
 
 ER_INPLACE_REBUILD_AND_NO_LOCK_AFTER_PREPARE EPDDL
-  eng "inplace  rebuild table  and no lock after  prepare."
+  eng "inplace rebuild table  and no lock after  prepare."
 
 ER_INPLACE_NO_REBUILD_AND_NO_LOCK_AFTER_PREPARE EPDDL
   eng "inplace no rebuild table and no lock after prepare. "
 
-ER_INPLACE_AND_SHARED_LOCK EPDDL
-  eng "inplace and need shared lock."
+ER_INPLACE_REBUILD_AND_SHARED_LOCK EPDDL
+  eng "inplace rebuild table and need shared lock."
 
 ER_INPLACE_NOT_SUPPORTED EPDDL
   eng "copy and need shared lock."
 
 ER_UNKNOWN_DDL_TYPE EPDDL
   eng "unknown ddl type,please conncat DBA."
+
+ER_INPLACE_NO_REBUILD_AND_SHARED_LOCK EPDDL
+  eng "inplace no rebuild and need shared lock."
 #
 #  End of 5.7 error messages.
 #
