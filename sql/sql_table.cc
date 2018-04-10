@@ -8914,7 +8914,7 @@ whether_add_fulltext_index(Alter_inplace_info* ha_alter_info)
 {
     bool add_fts_idx=false;
 
-    for (int i = 0; i < ha_alter_info->index_add_count; i++) {
+    for (uint i = 0; i < ha_alter_info->index_add_count; i++) {
         const KEY *key = &ha_alter_info->key_info_buffer[
                 ha_alter_info->index_add_buffer[i]];
 
