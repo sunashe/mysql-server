@@ -50,6 +50,7 @@ Created 5/7/1996 Heikki Tuuri
 #include "pars0pars.h"
 
 #include <set>
+#include <lock0priv.h>
 
 /* Flag to enable/disable deadlock detector. */
 my_bool	innobase_deadlock_detect = TRUE;
@@ -1504,7 +1505,58 @@ RecLock::lock_add(lock_t* lock, bool add_to_hash)
 		++lock->index->table->n_rec_locks;
 
 		HASH_INSERT(lock_t, hash, lock_hash_get(m_mode), key, lock);
+		ib::info()
+				<< "trx_id: "
+				<< lock->trx->id
+				<< " create a record lock and add it to lock hash table, "
+				<<" space_id: "
+				<< m_rec_id.m_space_id
+				<<" page_no: "
+				<< m_rec_id.m_page_no
+				<< " heap_no: "
+				<< m_rec_id.m_heap_no
+				<<" n_bits: "
+				<<lock->un_member.rec_lock.n_bits
+				<< " primary key: "
+				<< dict_index_is_clust(lock->index)
+				<< " is record lock: "
+				<< lock->is_record_lock()
+				<<" is waiting: "
+				<< lock->is_waiting()
+				<<" is gap: "
+				<<lock->is_gap()
+				<<" is record not gap: "
+				<<lock->is_record_not_gap()
+				<<" is insert intention: "
+				<<lock->is_insert_intention()
+				<<" lock_mode: "
+				<< static_cast<int>(LOCK_MODE_MASK&(lock->type_mode))
+			    <<"  (0:LOCK_IS, 1:LOCK_IX, 2:LOCK_S, 3:LOCK_X, 4:LOCK_AUTO_INC, 5:LOCK_NONE)"
+				;
+
+	} else
+	{
+		ib::info() << "create a record lock, "
+				<<" space_id: "
+				<< lock->un_member.rec_lock.space
+				<<" page_no: "
+				<<lock->un_member.rec_lock.page_no
+				<<" n_bits: "
+				<<lock->un_member.rec_lock.n_bits
+				<< " primary key: "
+				<< dict_index_is_clust(lock->index)
+				<< " is record lock: "
+				<< lock->is_record_lock()
+				<<" is waiting: "
+				<< lock->is_waiting()
+				<<" is gap: "
+				<<lock->is_gap()
+				<<" is record not gap: "
+				<<lock->is_record_not_gap()
+				<<" is insert intention: "
+				<<lock->is_insert_intention();
 	}
+
 
 	if (m_mode & LOCK_WAIT) {
 		lock_set_lock_and_trx_wait(lock, lock->trx);

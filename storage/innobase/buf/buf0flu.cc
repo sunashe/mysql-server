@@ -3206,6 +3206,7 @@ DECLARE_THREAD(buf_flush_page_cleaner_coordinator)(
 
 			if (curr_time > next_loop_time + 3000) {
 				if (warn_count == 0) {
+					/*为了更好的观察锁情况，注视掉了page cleaner的信息
 					ib::info() << "page_cleaner: 1000ms"
 						" intended loop took "
 						<< 1000 + curr_time
@@ -3216,6 +3217,7 @@ DECLARE_THREAD(buf_flush_page_cleaner_coordinator)(
 						<< " and evicted="
 						<< n_evicted
 						<< ", during the time.)";
+					 */
 					if (warn_interval > 300) {
 						warn_interval = 600;
 					} else {

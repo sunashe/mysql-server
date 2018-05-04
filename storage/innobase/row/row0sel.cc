@@ -5497,7 +5497,6 @@ no_gap_lock:
 			err = DB_SUCCESS;
             //ib::info() <<"trx " << thr_get_trx(thr)->id << " lock heap_no: " << page_rec_get_heap_no(rec);
 		case DB_SUCCESS:
-            ib::info() <<"trx " << thr_get_trx(thr)->id << " lock heap_no: " << page_rec_get_heap_no(rec);
 			break;
 		case DB_LOCK_WAIT:
 			ib::info() <<"trx " << thr_get_trx(thr)->id << " lock wait heap_no: " << page_rec_get_heap_no(rec);
