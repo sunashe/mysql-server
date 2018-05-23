@@ -362,6 +362,8 @@ row_log_online_op(
 			* srv_sort_buf_size;
 
 		if (byte_offset + srv_sort_buf_size >= srv_online_max_size) {
+			ib::error() << "insert into online second index failed;"<< "buf needed:"<< byte_offset+srv_sort_buf_size << " max_online_Log_size:"
+						<< srv_online_max_size;
 			goto write_failed;
 		}
 
@@ -387,6 +389,7 @@ row_log_online_op(
 			log->tail.block, byte_offset, srv_sort_buf_size);
 
 		log->tail.blocks++;
+        ib::info()<<"current online_ddl_log_blocks: " << log->tail.blocks;
 		if (err != DB_SUCCESS) {
 write_failed:
 			/* We set the flag directly instead of invoking
@@ -3645,6 +3648,7 @@ next_block:
 	ut_ad(index->online_log->head.bytes == 0);
 
 	stage->inc(row_log_progress_inc_per_block());
+	ib::info()<<"current online_ddl_apply head blocks: " << index->online_log->head.blocks;
 
 	if (trx_is_interrupted(trx)) {
 		goto interrupted;
