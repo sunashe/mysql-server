@@ -6,9 +6,21 @@
 #include "ha_plugin.h"
 #include "log.h"
 
+
 extern char server_uuid[UUID_LENGTH+1];
 
 
+extern "C" void* handler_waiting_for_connection(void* arg)
+{
+    reinterpret_cast<master *>(arg)->thread_func_waiting_for_connection();
+    return NULL;
+}
+
+extern "C" void* handler_collection(void* arg)
+{
+    reinterpret_cast<master *>(arg)->thread_func_collection();
+    return NULL;
+}
 
 bool master::check_sip_bound_me(char *sip, bool& bind_others) {
 
@@ -58,8 +70,6 @@ bool master::check_sip_bound_me(char *sip, bool& bind_others) {
 
 bool master::bind_sip(char *sip) {
     bool res = false;
-
-
     //
 
     return res;
@@ -67,7 +77,7 @@ bool master::bind_sip(char *sip) {
 }
 
 
-void* master::thread_func_waiting_for_connection(void *arg) {
+ void master::thread_func_waiting_for_connection() {
 
     fd_set cluster_fd_set;
     struct timeval tv;
@@ -112,11 +122,10 @@ void* master::thread_func_waiting_for_connection(void *arg) {
     }
 
     //ha_plugin_ha_open = 0/NO todo send this to slave.
-    return NULL;
 }
 
 
-void* master::thread_func_collection(void*){
+void master::thread_func_collection(){
 
     MYSQL* conn;
     MYSQL_RES* res;
@@ -127,7 +136,7 @@ void* master::thread_func_collection(void*){
         //connection error todo log it
     }
 
-    while(1)
+    while(ha_plugin_ha_open)
     {
         //collect ** and send to others.
 
@@ -142,23 +151,38 @@ void* master::thread_func_collection(void*){
 
         sprintf(query_for_most_current_connections,"select * from performance_schema.accounts "
                 "where USER is not null and HOST is not null and host not in ('127.0.0.1','localhost','%s')"
-                " order by CURRENT_CONNECTIONS desc limit 1",instance_host);
+                " order by CURRENT_CONNECTIONS desc limit 1",instance_host); //exclude 127.0.0.1,localhost,and host of this instance.
 
-        if(mysql_query(conn,query_for_most_current_connections) == 0)
+        if(mysql_query(conn,query_for_most_current_connections) == 0) //todo exclude user(root,dba_manager and so on)
         {
             res = mysql_store_result(conn);
+
             if(res->row_count > 0)
             {
                 row = mysql_fetch_row(res);
+
                 if(row[0] != NULL)
                 {
+                    //set to 0,
+                    memset(clientsConnections->user,0,sizeof(clientsConnections->user));
+                    memset(clientsConnections->host,0,sizeof(clientsConnections->host));
 
+                    //save clientsConnections
+                    memcpy(clientsConnections->user,row[0],strlen(row[0])+1);
+                    memcpy(clientsConnections->host,row[1],strlen(row[1])+1);
+                   // memcpy(clientsConnections->current_connections,)
+                    clientsConnections->current_connections = atoi(row[2]);
+                    clientsConnections->total_connections = atoi(row[3]);
                 }
             }
-            else
+            else //no res
             {
                 //todo log it and check performance_schema is on.
             }
+        }
+        else //query error
+        {
+            //todo log here.
         }
 
         if(send_m_to_others())
@@ -171,13 +195,13 @@ void* master::thread_func_collection(void*){
         }
 
     }
-
-    return NULL;
-
 }
 
 bool master::send_m_to_others() {
-
+    if(ha_cluster.size() <= 1)
+    {
+        return true;//todo log here,no slave.
+    }
     char* send_buff = NULL;
     memcpy(send_buff,clientsConnections,sizeof(m_clients_connections));
     vector<data_node>::iterator it_cluster;
@@ -191,6 +215,8 @@ bool master::send_m_to_others() {
         //todo 处理send返回值，失败，成功
         send(it_cluster->conn,send_buff,sizeof(m_clients_connections),0);
     }
+
+    return true;
 }
 
 void master::run()
@@ -234,9 +260,10 @@ void master::run()
 
 
     pthread_t thread_waiting_for_connection;
-    pthread_create(&thread_waiting_for_connection,NULL,thread_func_waiting_for_connection,NULL);
+    pthread_create(&thread_waiting_for_connection,NULL,handler_waiting_for_connection,this);
     pthread_t thread_collection;
-    pthread_create(&thread_collection,NULL,thread_func_collection,NULL);
+    pthread_create(&thread_collection,NULL,handler_collection,this);
+
 }
 
 void master::stop()

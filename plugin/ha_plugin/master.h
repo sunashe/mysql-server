@@ -25,11 +25,11 @@ public:
 
     bool bind_sip(char* sip);
 
-    void* thread_func_collection(void*);
+    void thread_func_collection();
 
     bool send_m_to_others();
 
-    void* thread_func_waiting_for_connection(void* arg);
+    void thread_func_waiting_for_connection();
 
     vector<data_node> ha_cluster;
 

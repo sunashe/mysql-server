@@ -24,7 +24,7 @@ typedef struct M_CLIENTS_CONNECTIONS
 {
     char message_header = 2;
     char user[100];
-    string host[100];
+    char host[100];
     unsigned long int current_connections;
     unsigned long int total_connections;
 }m_clients_connections;
