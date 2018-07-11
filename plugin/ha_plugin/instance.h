@@ -13,19 +13,20 @@
 
 using namespace std;
 
-typedef enum INSTANCE_STATUS
+typedef enum DATA_NODE_STATUS
 {
-    MASTER,
-    SLAVE,
+    MASTER = 0,
+    SLAVE = 1,
+    CLIENT = 1<<1,
     UNKNOWN
-}instance_status;
+}data_node_status;
 
 typedef struct DATA_NODE
 {
     char host[HOST_MAX_LEN];
     unsigned int port;
-    char uuid[UUID_LENGTH];
-    instance_status instanceStatus;
+    char uuid[UUID_LENGTH+1];
+    data_node_status dataNodeStatus;
     int conn;
 }data_node;
 
@@ -33,7 +34,7 @@ typedef struct DATA_NODE
 class instance {
 public:
 
-    instance_status instanceStatus;
+    data_node_status instanceStatus;
     char* get_host(){return host;}
     unsigned int get_port(){return port;}
     char* get_uuid(){return uuid;}

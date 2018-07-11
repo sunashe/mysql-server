@@ -13,7 +13,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 
-SET(HA_PLUGIN_SOURCE ha_plugin.cc slave.cc slave.h  master.cc master.h instance.cc instance.h)
+SET(HA_PLUGIN_SOURCE ha_plugin.cc slave.cc slave.h  master.cc master.h instance.cc instance.h triangle.cc triangle.h)
 LINK_LIBRARIES()
 MYSQL_ADD_PLUGIN(ha_plugin ${HA_PLUGIN_SOURCE}
         MODULE_ONLY MODULE_OUTPUT_NAME "ha_plugin")

@@ -11,13 +11,13 @@
 
 
 
-typedef struct M_REGIST
+typedef struct M_REGISTER
 {
     char message_header = 1;
     char host[20];
     unsigned int port;
     char uuid[UUID_LENGTH+1];
-}m_regist;
+}m_register;
 
 
 typedef struct M_CLIENTS_CONNECTIONS
@@ -43,6 +43,21 @@ typedef struct M_PERMIT
     char message_header = 4;
     char body = '0';
 }m_permit;
+
+typedef struct m_down_grade
+{
+    char message_header = 5;
+    char message_body[20];
+};
+
+typedef struct M_UNREGISTER
+{
+    char message_header = 6;
+    char host[20];
+    unsigned int port;
+    char uuid[UUID_LENGTH+1];
+
+}m_unregister;
 
 
 

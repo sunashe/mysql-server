@@ -9,6 +9,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include "message.h"
 
 class slave:public instance {
 public:
@@ -19,9 +21,19 @@ public:
 
     void stop();
 
-    bool regist_to_cluster();
+    bool find_master();
+
+    bool register_to_cluster();
     bool check_master_alived();
     bool  promote();
+    bool prepare_to_promote();
+    void waiting_for_relay_log_replay();
+
+    int compare_gtid();
+    int compare_priority();
+    bool compare_uuid();
+    bool mysql_ping_master();
+    bool check_slave_io_thread();
 };
 
 
