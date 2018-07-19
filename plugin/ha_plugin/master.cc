@@ -316,9 +316,9 @@ void master::run() {
 
     } else {
         bool bind_others = false;
-        if (!check_sip_bound_me(cluster_sip, bind_others)) //check sip is used or no or bind with me.
+        if (!check_sip_bound_me(cluster_sip, bind_others)) //check sip is used or no or bind with myself.
         {
-            if (bind_others)//sip is not binding with me , and bind others. that is not permitted.
+            if (bind_others)//sip is not binding with myself , and bind others. that is not permitted.
             {
                 //todo log it
                 sql_print_error("sip has bound with others");
@@ -332,7 +332,7 @@ void master::run() {
                     sql_print_error("ha_plugin bind sip error");
                 }
             }
-        } else //sip is already bound with me, log it
+        } else //sip is already bound with myself, log it
         {
             //todo log it
             sql_print_information("sip is binding with this instance");

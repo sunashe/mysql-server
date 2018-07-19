@@ -4,6 +4,7 @@
 
 #include "slave.h"
 #include "ha_plugin.h"
+#include "log.h"
 
 void slave::run()
 {
@@ -144,6 +145,12 @@ get_master_message:
     if(mysql_ping_master())
     {
         goto get_master_message;
+    }
+
+    //mysql_ping to master failed.
+    if(ha_cluster.size() == 2)
+    {
+
     }
 
     res=false;
@@ -305,11 +312,35 @@ int slave::compare_gtid()
     return res;
 }
 
-
+/**
+ *
+ * @return 0 所有的从机优先级一样 ; 1 此从机优先级较小; 2 此从机的优先级较高
+ */
 int slave::compare_priority()
 {
-    int  res;
+    int  res = 0 ;
+    char query_get_priority[]="select @@instance_promote_priority";
+    MYSQL* conn;
+    vector<data_node>::iterator it_ha_cluster;
+    for(it_ha_cluster=ha_cluster.begin();it_ha_cluster!=ha_cluster.end();it_ha_cluster++)
+    {
+        if(it_ha_cluster->dataNodeStatus == MASTER || it_ha_cluster->host == instance_host )
+        {
+            continue;
+        }
 
+        conn=mysql_init(0);
+        int  connect_timeout =  1;
+        mysql_options(conn,MYSQL_OPT_CONNECT_TIMEOUT,(const char*)&connect_timeout);
+        if(mysql_real_connect(conn,it_ha_cluster->host,cluster_repl_user,cluster_repl_password,NULL,mysqld_port,NULL,0) !=NULL)
+        {
+
+        }
+        else
+        {
+            sql_print_error("Connect to slave %s:%d error when compare instance promote priority ",it_ha_cluster->host,it_ha_cluster->port);
+        }
+    }
 
     return res;
 }
@@ -355,4 +386,19 @@ bool slave::mysql_ping_master(){
 bool slave::check_slave_io_thread()
 {
 
+}
+
+
+/**
+ * call this function (ha_cluster.size == 2 )
+ * @return
+ * true: master is alived;
+ * false: master has gone away.
+ */
+bool slave::check_master_alived_by_clients()
+{
+    bool res;
+    
+
+    return res;
 }

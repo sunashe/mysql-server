@@ -28,7 +28,7 @@ typedef struct LINE {
 class triangle {
 public:
     triangle(){};
-    triangle(const data_node* const r_me,const data_node* const r_she,const data_node* const r_cli):me(*r_me),she(*r_she),client(*r_cli)
+    triangle(const data_node* const r_me,const data_node* const r_she,const data_node* const r_cli):myself(*r_me),you(*r_she),client(*r_cli)
     {
 
     };
@@ -38,8 +38,8 @@ public:
     {
         if(this!=&tri_r)
         {
-            this->me = tri_r.me;
-            this->she = tri_r.she;
+            this->myself = tri_r.myself;
+            this->you = tri_r.you;
             this->client = tri_r.client;
             this->line_me_she = tri_r.line_me_she;
             this->line_me_client = tri_r.line_me_client;
@@ -55,12 +55,12 @@ public:
     line_status get_line_me_she_status(){return this->line_me_she.lineStatus;}
     line_status get_line_me_client_status(){return this->line_me_client.lineStatus;}
     line_status get_line_client_she_status(){return this->line_client_she.lineStatus;}
-    data_node get_me(){return this->me;}
-    data_node get_she(){return this->she;}
+    data_node get_me(){return this->myself;}
+    data_node get_she(){return this->you;}
     data_node get_client(){return this->client;}
 
-    void set_data_node_me(const data_node* dataNode){this->me = *dataNode;}
-    void set_data_node_she(const data_node* dataNode){this->she = *dataNode;}
+    void set_data_node_me(const data_node* dataNode){this->myself = *dataNode;}
+    void set_data_node_she(const data_node* dataNode){this->you = *dataNode;}
     void set_data_node_client(const data_node* dataNode){this->client = *dataNode;}
     void init_line_status();
     void init_line_node();
@@ -68,8 +68,8 @@ public:
     bool test_network(data_node*,data_node*);
 
 private:
-    data_node me;
-    data_node she;
+    data_node myself;
+    data_node you;
     data_node client;
     line line_me_she;
     line line_me_client;

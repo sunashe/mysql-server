@@ -19,7 +19,7 @@ bool triangle::compare_triangle(const data_node*, const data_node*,const data_no
 
 void  triangle::init_line_status()
 {
-    if(test_network(&me,&she))
+    if(test_network(&myself,&you))
     {
         line_me_she.lineStatus = PINGABLE;
     }
@@ -28,7 +28,7 @@ void  triangle::init_line_status()
         line_me_she.lineStatus = UNREACHABLE;
     }
 
-    if(test_network(&me,&client))
+    if(test_network(&myself,&client))
     {
         line_me_she.lineStatus = PINGABLE;
     }
@@ -40,11 +40,11 @@ void  triangle::init_line_status()
 
 void triangle::init_line_node()
 {
-    line_me_she.l_this=&me;
-    line_me_she.l_that=&she;
-    line_me_client.l_this=&me;
+    line_me_she.l_this=&myself;
+    line_me_she.l_that=&you;
+    line_me_client.l_this=&myself;
     line_me_client.l_that=&client;
-    line_client_she.l_this=&she;
+    line_client_she.l_this=&you;
     line_client_she.l_that=&client;
 }
 

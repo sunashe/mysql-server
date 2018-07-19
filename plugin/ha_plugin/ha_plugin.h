@@ -28,6 +28,7 @@ extern char* cluster_repl_password;
 extern char* instance_host;
 extern unsigned int slave_promote;
 extern unsigned int waiting_for_slave_replay_seconds;
+extern unsigned int instance_promote_priority;
 
 /*ha_plugin global status*/
 extern char* ha_plugin_instance_status;

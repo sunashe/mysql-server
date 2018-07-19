@@ -60,6 +60,7 @@ char* cluster_repl_password = NULL;//复制用户密码
 char* instance_host = NULL;
 unsigned int slave_promote = 1;
 unsigned int waiting_for_slave_replay_seconds=5;
+unsigned int instance_promote_priority;
 
 /*创建系统变量，可以通过配置文件或set global来修改*/
 MYSQL_SYSVAR_BOOL(ha_open,ha_open,PLUGIN_VAR_OPCMDARG,"open or close ha when ha_plugin init",NULL, NULL, FALSE);
@@ -68,6 +69,7 @@ MYSQL_SYSVAR_STR(cluster_list,cluster_list,PLUGIN_VAR_OPCMDARG|PLUGIN_VAR_MEMALL
 MYSQL_SYSVAR_STR(cluster_sip,cluster_sip,PLUGIN_VAR_OPCMDARG|PLUGIN_VAR_MEMALLOC,"ha cluster sip",NULL,NULL,"10.211.55.202");
 MYSQL_SYSVAR_UINT(manager_port,manager_port,PLUGIN_VAR_OPCMDARG,"ha plugin manager port",NULL,NULL,23308,23307,65535,0);
 MYSQL_SYSVAR_UINT(slave_promote,slave_promote,PLUGIN_VAR_OPCMDARG,"slave promote level,0:never promote;1:promote when no master;2:promote when no master when init",NULL,NULL,1,0,2,1);
+MYSQL_SYSVAR_UINT(instance_promote_priority,instance_promote_priority,PLUGIN_VAR_OPCMDARG,"used when master is gone away",NULL,NULL,1,0,100,1);
 MYSQL_SYSVAR_UINT(waiting_for_slave_replay_seconds,waiting_for_slave_replay_seconds,PLUGIN_VAR_OPCMDARG,"waiting for slave replay seconds",NULL,NULL,5,0,10000,1);
 MYSQL_SYSVAR_STR(cluster_repl_user,cluster_repl_user,PLUGIN_VAR_OPCMDARG|PLUGIN_VAR_MEMALLOC,"cluster repl user",NULL,NULL,"repl");
 MYSQL_SYSVAR_STR(cluster_repl_password,cluster_repl_password,PLUGIN_VAR_OPCMDARG|PLUGIN_VAR_MEMALLOC,"cluster repl password",NULL,NULL,"repl");
@@ -95,6 +97,7 @@ struct st_mysql_sys_var* vars_system_var[] = {
         MYSQL_SYSVAR(cluster_list),
         MYSQL_SYSVAR(cluster_sip),
         MYSQL_SYSVAR(slave_promote),
+        MYSQL_SYSVAR(instance_promote_priority),
         MYSQL_SYSVAR(manager_port),
         MYSQL_SYSVAR(waiting_for_slave_replay_seconds),
         MYSQL_SYSVAR(cluster_repl_user),
