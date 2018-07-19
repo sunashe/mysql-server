@@ -12,7 +12,9 @@ using std::map;
 
 
 extern char server_uuid[UUID_LENGTH+1];
-
+/**
+ *
+ */
 
 extern "C" void* handler_waiting_for_connection(void* arg)
 {
@@ -25,7 +27,13 @@ extern "C" void* handler_collection(void* arg)
     reinterpret_cast<master *>(arg)->thread_func_collection();
     return NULL;
 }
-
+/**
+ *
+ *
+ * @param sip  cluster_sip
+ * @param bind_others  bind with others
+ * @return true as bind with me;false as not bind with me.
+ */
 
 bool master::check_sip_bound_me(char *sip, bool& bind_others) {
 
@@ -75,6 +83,11 @@ bool master::check_sip_bound_me(char *sip, bool& bind_others) {
     return r;
 }
 
+/**
+ *
+ * @param sip cluster_sip
+ * @return true sucessfully bind with me;false bind failed.
+ */
 bool master::bind_sip(char *sip) {
     bool res = false;
     //
@@ -96,6 +109,11 @@ bool master::bind_sip(char *sip) {
 
 }
 
+/**
+ *
+ * @param sip cluster_sip
+ * @return true unbind sucessfully ;false failed.
+ */
 bool master::unbind_sip(char* sip)
 {
     bool res = false;
@@ -117,7 +135,10 @@ bool master::unbind_sip(char* sip)
     return res;
 }
 
-
+/**
+ *
+ * @param arg
+ */
 void cleanup_thread_waiting_for_connection(void *arg)
 {
     int i = *(int*)arg;
@@ -384,7 +405,11 @@ bool master::downgrade_as_slave_passive()
 
 }
 
-
+/**
+ *
+ * @param dataNode
+ * @return
+ */
 
 
 int master::add_triangle(data_node dataNode)
