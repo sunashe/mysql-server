@@ -1534,7 +1534,8 @@ RecLock::lock_add(lock_t* lock, bool add_to_hash)
 			    <<"  (0:LOCK_IS, 1:LOCK_IX, 2:LOCK_S, 3:LOCK_X, 4:LOCK_AUTO_INC, 5:LOCK_NONE)"
 				;
 
-	} else
+	}
+	else
 	{
 		ib::info() << "create a record lock, "
 				<<" space_id: "

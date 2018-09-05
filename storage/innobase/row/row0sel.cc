@@ -5499,7 +5499,6 @@ no_gap_lock:
 		case DB_SUCCESS:
 			break;
 		case DB_LOCK_WAIT:
-			ib::info() <<"trx " << thr_get_trx(thr)->id << " lock wait heap_no: " << page_rec_get_heap_no(rec);
 			/* Lock wait for R-tree should already
 			be handled in sel_set_rtr_rec_lock() */
 			ut_ad(!dict_index_is_spatial(index));
