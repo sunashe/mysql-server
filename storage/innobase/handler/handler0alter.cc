@@ -7449,6 +7449,7 @@ commit_try_rebuild(
 	trx_t*			trx,
 	const char*		table_name)
 {
+	sql_print_information("ddl enter commit_try_rebuild");
 	dict_table_t*	rebuilt_table	= ctx->new_table;
 	dict_table_t*	user_table	= ctx->old_table;
 
@@ -7506,11 +7507,12 @@ commit_try_rebuild(
 				NULL, true, NULL);
 			ctx->new_table->vc_templ = s_templ;
 		}
-
+		sql_print_information("ddl enter row_log_table_apply");
 		error = row_log_table_apply(
 			ctx->thr, user_table, altered_table,
 			static_cast<ha_innobase_inplace_ctx*>(
 				ha_alter_info->handler_ctx)->m_stage);
+		sql_print_information("ddl exit row_log_table_apply");
 
 		if (s_templ) {
 			ut_ad(ctx->need_rebuild());
@@ -8145,6 +8147,8 @@ ha_innobase::commit_inplace_alter_table(
 	Alter_inplace_info*	ha_alter_info,
 	bool			commit)
 {
+
+	sql_print_information("ddl enter ha_innobase::commit_inplace_alter_table");
 	dberr_t	error;
 	ha_innobase_inplace_ctx*ctx0;
 	struct mtr_buf_copy_t	logs;
@@ -8281,6 +8285,7 @@ ha_innobase::commit_inplace_alter_table(
 	/* Latch the InnoDB data dictionary exclusively so that no deadlocks
 	or lock waits can happen in it during the data dictionary operation. */
 	row_mysql_lock_data_dictionary(trx);
+	sql_print_information("ddl lock data dictionary");
 
 	ut_ad(log_append_on_checkpoint(NULL) == NULL);
 
@@ -8330,7 +8335,6 @@ ha_innobase::commit_inplace_alter_table(
 			ctx->tmp_name = dict_mem_create_temporary_tablename(
 				ctx->heap, ctx->new_table->name.m_name,
 				ctx->new_table->id);
-
 			fail = commit_try_rebuild(
 				ha_alter_info, ctx, altered_table, table,
 				trx, table_share->table_name.str);
@@ -8642,6 +8646,7 @@ foreign_fail:
 		}
 
 		row_mysql_unlock_data_dictionary(trx);
+		sql_print_information("ddl unlock data dictionary");
 		trx_free_for_mysql(trx);
 		MONITOR_ATOMIC_DEC(MONITOR_PENDING_ALTER_TABLE);
 		DBUG_RETURN(false);

@@ -1508,28 +1508,28 @@ RecLock::lock_add(lock_t* lock, bool add_to_hash)
 		ib::info()
 				<< "trx_id: "
 				<< lock->trx->id
-				<< " create a record lock and add it to lock hash table, "
-				<<" space_id: "
+				<< " create a record lock and add it to lock hash table,"
+				<<"\nspace_id: "
 				<< m_rec_id.m_space_id
-				<<" page_no: "
+				<<" \npage_no: "
 				<< m_rec_id.m_page_no
-				<< " heap_no: "
+				<< " \nheap_no: "
 				<< m_rec_id.m_heap_no
-				<<" n_bits: "
+				<<" \nn_bits: "
 				<<lock->un_member.rec_lock.n_bits
-				<< " primary key: "
+				<< " \nprimary key: "
 				<< dict_index_is_clust(lock->index)
-				<< " is record lock: "
+				<< " \nis record lock: "
 				<< lock->is_record_lock()
-				<<" is waiting: "
+				<<" \nis waiting: "
 				<< lock->is_waiting()
-				<<" is gap: "
+				<<"\nis gap: "
 				<<lock->is_gap()
-				<<" is record not gap: "
+				<<"\nis record not gap: "
 				<<lock->is_record_not_gap()
-				<<" is insert intention: "
+				<<"\nis insert intention: "
 				<<lock->is_insert_intention()
-				<<" lock_mode: "
+				<<" \nlock_mode: "
 				<< static_cast<int>(LOCK_MODE_MASK&(lock->type_mode))
 			    <<"  (0:LOCK_IS, 1:LOCK_IX, 2:LOCK_S, 3:LOCK_X, 4:LOCK_AUTO_INC, 5:LOCK_NONE)"
 				;
