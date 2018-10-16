@@ -136,7 +136,7 @@ bool slave::check_master_alived()
 get_master_message:
     while(true)
     {
-        //超时3秒,
+        //超时1秒,
         //select(dataNodeMaster.conn,)
 
         break;
@@ -147,11 +147,9 @@ get_master_message:
         goto get_master_message;
     }
 
-    //mysql_ping to master failed.
-    if(ha_cluster.size() == 2)
-    {
-
-    }
+    //mysql_ping to master failed.从此从机的角度看，master实例不可达。将slave置于prepare_to_promote状态
+    ha_plugin_instance_status = new char[sizeof("prepare_to_promote")+1];
+    memcpy(ha_plugin_instance_status,"prepare_to_promote",sizeof("prepare_to_promote")+1);
 
     res=false;
     return res;
@@ -182,10 +180,41 @@ bool slave::prepare_to_promote()
 
     bool prepared = false;
 
-    if(ha_cluster.size() == 2)//ha_cluster中只有两个实例
+/**
+ * 如果ha_cluster中之后两个实例
+ * 1，通过client确定主机情况，如果主机存活，放弃提主
+ */
+
+    if(ha_cluster.size() == 2) //cluster中只有两个实例
     {
-        waiting_for_relay_log_replay();
-        prepared =true;
+        if(check_master_alived_by_clients())  //通过client检测master是否存活
+        {
+            prepared=false;
+            return prepared;
+        }
+        else
+        {
+            waiting_for_relay_log_replay();
+            prepared =true;
+            return prepared;
+        }
+
+    }
+
+/**
+ * 如果ha_cluster中超过了2个实例
+ * 1，查看网络状况，自己是否处于大多数网络环境中，如果不是，则放弃提主
+ * 2，如果是，对比网络环境中其他机器的priority，查看自己所处的地位
+ * 3，如果较小，放弃提主，如果最大，获得提主资格，如果都一样，则对比gtid
+ * 4，选择当前数据最接近主机的从，获取提主资格，其他从机，依然为从机
+ */
+
+
+    my_sleep(1000); //sleep 1秒，以便其他客户端都发现主库的问题。
+
+    if(!cluster_net_detection())
+    {
+        prepared=false;
         return prepared;
     }
 
@@ -199,6 +228,7 @@ bool slave::prepare_to_promote()
             int gtid_res;
             waiting_for_relay_log_replay();
             gtid_res = compare_gtid();
+
             switch(gtid_res)  //比较回放情况
             {
                 case 0:
@@ -391,6 +421,7 @@ bool slave::check_slave_io_thread()
 
 /**
  * call this function (ha_cluster.size == 2 )
+ *
  * @return
  * true: master is alived;
  * false: master has gone away.
@@ -398,7 +429,79 @@ bool slave::check_slave_io_thread()
 bool slave::check_master_alived_by_clients()
 {
     bool res;
-    
+    if(vec_triangles.empty())
+    {
+        res=true; //no client.
+    }
+
+    int pingable_num=0;
+    int unpingable_num=0;
+    vector<triangle> ::iterator it_vec_tri;
+    for(it_vec_tri = vec_triangles.begin();it_vec_tri != vec_triangles.end();it_vec_tri++)
+    {
+        it_vec_tri->init_line_node();
+        it_vec_tri->init_line_status();
+        if(it_vec_tri->get_line_client_you_status() == PINGABLE)
+        {
+            pingable_num++;
+        }
+        else
+        {
+            unpingable_num++;
+        }
+    }
+
+    if(pingable_num >= unpingable_num)
+    {
+        res=true;
+    }
+    else
+    {
+        res=false;
+    }
+    return res;
+}
+
+/**
+ *
+ * @return
+ */
+bool slave::cluster_net_detection()
+{
+    bool res;
+    int pingable_num=1; //include myself;
+    int unpingable_num=0;
+    vector<data_node>::iterator it_ha_cluster;
+    for(it_ha_cluster=ha_cluster.begin();it_ha_cluster!=ha_cluster.end();it_ha_cluster++)
+    {
+        if(it_ha_cluster->host == cluster_sip || it_ha_cluster->host == instance_me.host)
+        {
+            continue;
+        }
+
+
+        triangle triangle_tmp(&instance_me,&(*it_ha_cluster),&instance_me);
+        triangle_tmp.init_line_node();
+        triangle_tmp.init_line_status();
+        if(triangle_tmp.get_line_myself_you_status() == PINGABLE)
+        {
+            pingable_num++;
+        }
+        else
+        {
+            unpingable_num++;
+        }
+
+    }
+
+    if(pingable_num > unpingable_num)
+    {
+        res=true;
+    }
+    else
+    {
+        res=false;
+    }
 
     return res;
 }

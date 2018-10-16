@@ -52,9 +52,9 @@ public:
     bool compare_triangle(const data_node*, const data_node*,const data_node*)const;
     void set_triangle(data_node*,data_node*,data_node*);
     void set_triangle_line_status();
-    line_status get_line_me_she_status(){return this->line_me_she.lineStatus;}
-    line_status get_line_me_client_status(){return this->line_me_client.lineStatus;}
-    line_status get_line_client_she_status(){return this->line_client_she.lineStatus;}
+    line_status get_line_myself_you_status(){return this->line_me_she.lineStatus;}
+    line_status get_line_myself_client_status(){return this->line_me_client.lineStatus;}
+    line_status get_line_client_you_status(){return this->line_client_she.lineStatus;}
     data_node get_me(){return this->myself;}
     data_node get_she(){return this->you;}
     data_node get_client(){return this->client;}

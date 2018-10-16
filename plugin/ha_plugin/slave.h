@@ -35,6 +35,7 @@ public:
     bool mysql_ping_master();
     bool check_slave_io_thread();
     bool check_master_alived_by_clients();
+    bool cluster_net_detection();_
 };
 
 

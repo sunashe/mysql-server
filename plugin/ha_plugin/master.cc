@@ -650,7 +650,7 @@ void master::master_main_loop()
                 {
                     triangle triangle1(&instance_me,&(*it_data_nodes_unreachable),&(*it_clients_cluster));
                     triangle1.set_triangle_line_status();
-                    if(triangle1.get_line_me_client_status() == PINGABLE)
+                    if(triangle1.get_line_myself_client_status() == PINGABLE)
                     {
                         clients_unreachable++;
                     }

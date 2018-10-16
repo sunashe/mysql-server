@@ -36,6 +36,8 @@ void  triangle::init_line_status()
     {
         line_me_she.lineStatus = UNREACHABLE;
     }
+
+
 }
 
 void triangle::init_line_node()
