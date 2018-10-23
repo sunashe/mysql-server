@@ -34,6 +34,8 @@
 #include "my_default.h"
 #include <my_time.h>
 #include <sslopt-vars.h>
+#include "semisync_slave_plugin.h"
+
 /* That one is necessary for defines of OPTION_NO_FOREIGN_KEY_CHECKS etc */
 #include "query_options.h"
 #include <signal.h>
@@ -73,6 +75,8 @@ using std::max;
 */
 static
 std::map<std::string, std::string> map_mysqlbinlog_rewrite_db;
+
+
 
 /**
   The function represents Log_event delete wrapper
@@ -2505,6 +2509,27 @@ static int get_dump_flags()
 }
 
 
+
+typedef struct Binlog_relay_IO_param {
+    uint32 server_id;
+    my_thread_id thread_id;
+
+    /* Channel name */
+    char* channel_name;
+
+    /* Master host, user and port */
+    char *host;
+    char *user;
+    unsigned int port;
+
+    char *master_log_name;
+    my_off_t master_log_pos;
+
+    MYSQL *mysql;                        /* the connection to master */
+} Binlog_relay_IO_param;
+
+Binlog_relay_IO_param* binlogRelayIoParam;
+
 /**
   Requests binlog dump from a remote server and prints the events it
   receives.
@@ -2524,6 +2549,7 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
   uchar *command_buffer= NULL;
   size_t command_size= 0;
   ulong len= 0;
+  ulong len_old;
   size_t logname_len= 0;
   uint server_id= 0;
   NET* net= NULL;
@@ -2572,6 +2598,22 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
     error("Log name too long.");
     DBUG_RETURN(ERROR_STOP);
   }
+
+  binlogRelayIoParam = new Binlog_relay_IO_param;
+  binlogRelayIoParam->channel_name="test";
+  binlogRelayIoParam->host=host;
+  binlogRelayIoParam->user=user;
+  binlogRelayIoParam->server_id=server_id;
+  binlogRelayIoParam->thread_id = 1;
+  binlogRelayIoParam->master_log_name =NULL;
+  binlogRelayIoParam->master_log_pos=0;
+  binlogRelayIoParam->mysql = mysql;
+
+  if(handle_repl_semi_slave_request_dump((void*)binlogRelayIoParam,0))
+  {
+    error("call repl_semi_slave_request_dump error");
+  }
+
   const size_t BINLOG_NAME_INFO_SIZE= logname_len= tlen;
   
   if (opt_remote_proto == BINLOG_DUMP_NON_GTID)
@@ -2655,13 +2697,17 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
   }
   my_free(command_buffer);
 
+  unsigned long int total_bytes=0;
+  char new_binlog_file_name[FN_REFLEN + 1];
   for (;;)
   {
     const char *error_msg= NULL;
     Log_event *ev= NULL;
     Log_event_type type= binary_log::UNKNOWN_EVENT;
 
-    len= cli_safe_read(mysql, NULL);
+    len = cli_safe_read(mysql, NULL);
+    len--;
+    error("event len: %u",len);
     if (len == packet_error)
     {
       error("Got error reading packet from server: %s", mysql_error(mysql));
@@ -2676,7 +2722,16 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
       ROTATE_EVENT or FORMAT_DESCRIPTION_EVENT
     */
 
-    type= (Log_event_type) net->read_pos[1 + EVENT_TYPE_OFFSET];
+    const char* event_buf;
+    event_buf= (const char *) net->read_pos + 1;
+    if(handle_repl_semi_slave_read_event((void*)binlogRelayIoParam,(char*)net->read_pos+1,len,&event_buf,&len))
+    {
+      error("call handle_repl_semi_slave_read_event error");
+    }
+
+    type=(Log_event_type)event_buf[EVENT_TYPE_OFFSET];
+    error("IO thread received event of type %s",
+                          Log_event::get_type_str((Log_event_type)event_buf[EVENT_TYPE_OFFSET]));
 
     /*
       Ignore HEARBEAT events. They can show up if mysqlbinlog is
@@ -2695,8 +2750,8 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
     if (!raw_mode || (type == binary_log::ROTATE_EVENT) ||
         (type == binary_log::FORMAT_DESCRIPTION_EVENT))
     {
-      if (!(ev= Log_event::read_log_event((const char*) net->read_pos + 1 ,
-                                          len - 1, &error_msg,
+      if (!(ev= Log_event::read_log_event(event_buf,
+                                          len, &error_msg,
                                           glob_description_event,
                                           opt_verify_binlog_checksum)))
       {
@@ -2707,7 +2762,7 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
         If reading from a remote host, ensure the temp_buf for the
         Log_event class is pointing to the incoming stream.
       */
-      ev->register_temp_buf((char *) net->read_pos + 1);
+      ev->register_temp_buf((char*)event_buf);
     }
     if (raw_mode || (type != binary_log::LOAD_EVENT))
     {
@@ -2722,6 +2777,8 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
       */
       if (type == binary_log::ROTATE_EVENT)
       {
+        error("last total bytes %lu",total_bytes);
+        total_bytes =0;
         Rotate_log_event *rev= (Rotate_log_event *)ev;
         /*
           If this is a fake Rotate event, and not about our log, we can stop
@@ -2736,10 +2793,14 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
           {
             my_snprintf(log_file_name, sizeof(log_file_name), "%s%s",
                         output_file, rev->new_log_ident);
+            memset(new_binlog_file_name,0,(FN_REFLEN + 1));
+            my_stpcpy(new_binlog_file_name, rev->new_log_ident);
           }
           else
           {
             my_stpcpy(log_file_name, rev->new_log_ident);
+            memset(new_binlog_file_name,0,(FN_REFLEN + 1));
+            my_stpcpy(new_binlog_file_name, rev->new_log_ident);
           }
         }
 
@@ -2767,7 +2828,7 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
              next binlog file (fake rotate) picked by mysqlbinlog --to-last-log
          */
           old_off= start_position_mot;
-          len= 1; // fake Rotate, so don't increment old_off
+          len= 0; // fake Rotate, so don't increment old_off /*ashe note: this len is real buf len to write,so 0*/
         }
       }
       else if (type == binary_log::FORMAT_DESCRIPTION_EVENT)
@@ -2800,6 +2861,9 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
             error("Could not write into log file '%s'", log_file_name);
             DBUG_RETURN(ERROR_STOP);
           }
+
+          total_bytes+=4; //BINLOG_MAGIC is 4 bytes.
+
           /*
             Need to handle these events correctly in raw mode too 
             or this could get messy
@@ -2824,11 +2888,12 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
       {
         DBUG_EXECUTE_IF("simulate_result_file_write_error",
                         DBUG_SET("+d,simulate_fwrite_error"););
-        if (my_fwrite(result_file, net->read_pos + 1 , len - 1, MYF(MY_NABP)))
+        if (my_fwrite(result_file, (const uchar*)event_buf, len, MYF(MY_NABP)))
         {
           error("Could not write into log file '%s'", log_file_name);
           retval= ERROR_STOP;
         }
+        total_bytes += len;
         if (ev)
           reset_temp_buf_and_delete(ev);
       }
@@ -2866,6 +2931,10 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
       similar text and to have --stop-position to work identically.
     */
     old_off+= len-1;
+    binlogRelayIoParam->master_log_name = new_binlog_file_name;
+    binlogRelayIoParam->master_log_pos = total_bytes;
+    handle_repl_semi_slave_queue_event((void*)binlogRelayIoParam,event_buf,0,0);
+
   }
 
   DBUG_RETURN(OK_CONTINUE);
@@ -3340,6 +3409,11 @@ int main(int argc, char** argv)
   MY_INIT(argv[0]);
   DBUG_ENTER("main");
   DBUG_PROCESS(argv[0]);
+  if(symisync_slave_init())
+  {
+    error("init semisync_slave error");
+    return 1;
+  }
 
   my_init_time(); // for time functions
   tzset(); // set tzname
