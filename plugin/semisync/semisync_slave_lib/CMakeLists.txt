@@ -35,8 +35,6 @@ INCLUDE_DIRECTORIES(
 
 SET(SEMISYNC_SLAVE_SOURCES  semisync.cc semisync_slave.cc
   semisync_slave_plugin.cc semisync.h semisync_slave.h )
-#MYSQL_ADD_PLUGIN(semisync_slave ${SEMISYNC_SLAVE_SOURCES}
-#  MODULE_ONLY MODULE_OUTPUT_NAME "semisync_slave")
 add_library(semisync_slave_for_virtual_slave SHARED ${SEMISYNC_SLAVE_SOURCES})
 target_link_libraries(semisync_slave_for_virtual_slave mysqlclient)
 

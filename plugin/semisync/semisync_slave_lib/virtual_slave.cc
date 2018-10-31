@@ -2707,7 +2707,7 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
 
     len = cli_safe_read(mysql, NULL);
     len--;
-    error("event len: %u",len);
+   // error("event len: %u",len);
     if (len == packet_error)
     {
       error("Got error reading packet from server: %s", mysql_error(mysql));
@@ -2730,8 +2730,8 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
     }
 
     type=(Log_event_type)event_buf[EVENT_TYPE_OFFSET];
-    error("IO thread received event of type %s",
-                          Log_event::get_type_str((Log_event_type)event_buf[EVENT_TYPE_OFFSET]));
+//    error("IO thread received event of type %s",
+//                          Log_event::get_type_str((Log_event_type)event_buf[EVENT_TYPE_OFFSET]));
 
     /*
       Ignore HEARBEAT events. They can show up if mysqlbinlog is
@@ -2777,7 +2777,7 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
       */
       if (type == binary_log::ROTATE_EVENT)
       {
-        error("last total bytes %lu",total_bytes);
+       // error("last total bytes %lu",total_bytes);
         total_bytes =0;
         Rotate_log_event *rev= (Rotate_log_event *)ev;
         /*
