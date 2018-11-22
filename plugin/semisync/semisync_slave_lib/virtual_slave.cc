@@ -42,6 +42,7 @@
 #include <my_dir.h>
 
 #include "prealloced_array.h"
+#include <virtual_slave.h>
 
 /*
   error() is used in macro BINLOG_ERROR which is invoked in
@@ -75,7 +76,6 @@ using std::max;
 */
 static
 std::map<std::string, std::string> map_mysqlbinlog_rewrite_db;
-
 
 
 /**
@@ -2614,7 +2614,7 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
     error("call repl_semi_slave_request_dump error");
   }
 
-  const size_t BINLOG_NAME_INFO_SIZE= logname_len= tlen;
+  size_t BINLOG_NAME_INFO_SIZE= logname_len= tlen;
   
   if (opt_remote_proto == BINLOG_DUMP_NON_GTID)
   {
@@ -2649,16 +2649,20 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
   else
   {
     command= COM_BINLOG_DUMP_GTID;
+    char* real_log_name="";
+    BINLOG_NAME_INFO_SIZE= strlen(real_log_name);
+
 
     global_sid_lock->rdlock();
 
     // allocate buffer
     size_t encoded_data_size= gtid_set_excluded->get_encoded_length();
     size_t allocation_size=
-      ::BINLOG_FLAGS_INFO_SIZE + ::BINLOG_SERVER_ID_INFO_SIZE +
-      ::BINLOG_NAME_SIZE_INFO_SIZE + BINLOG_NAME_INFO_SIZE +
-      ::BINLOG_POS_INFO_SIZE + ::BINLOG_DATA_SIZE_INFO_SIZE +
-      encoded_data_size + 1;
+            ::BINLOG_FLAGS_INFO_SIZE + ::BINLOG_SERVER_ID_INFO_SIZE +
+            ::BINLOG_NAME_SIZE_INFO_SIZE + BINLOG_NAME_INFO_SIZE +
+            ::BINLOG_POS_INFO_SIZE + ::BINLOG_DATA_SIZE_INFO_SIZE +
+            encoded_data_size + 1;
+
     if (!(command_buffer= (uchar *) my_malloc(PSI_NOT_INSTRUMENTED,
                                               allocation_size, MYF(MY_WME))))
     {
@@ -3569,3 +3573,137 @@ int main(int argc, char** argv)
 #include "rpl_gtid_set.cc"
 #include "rpl_gtid_specification.cc"
 #include "rpl_tblmap.cc"
+
+
+/**
+  Faster net_store_length when we know that length is less than 65536.
+  We keep a separate version for that range because it's widely used in
+  libmysql.
+
+  uint is used as agrument type because of MySQL type conventions:
+    - uint for 0..65536
+    - ulong for 0..4294967296
+    - ulonglong for bigger numbers.
+*/
+
+static uchar *net_store_length_fast(uchar *packet, size_t length)
+{
+  if (length < 251)
+  {
+    *packet=(uchar) length;
+    return packet+1;
+  }
+  *packet++=252;
+  int2store(packet,(uint) length);
+  return packet+2;
+}
+
+/****************************************************************************
+  Functions used by the protocol functions (like net_send_ok) to store
+  strings and numbers in the header result packet.
+****************************************************************************/
+
+/* The following will only be used for short strings < 65K */
+
+uchar *net_store_data(uchar *to, const uchar *from, size_t length)
+{
+  to=net_store_length_fast(to,length);
+  memcpy(to,from,length);
+  return to+length;
+}
+
+int register_slave_on_master(MYSQL* mysql,/* Master_info *mi,*/
+                             bool *suppress_warnings)
+{
+  uchar buf[1024], *pos= buf;
+  size_t report_host_len=0, report_user_len=0, report_password_len=0;
+  DBUG_ENTER("register_slave_on_master");
+
+  *suppress_warnings= FALSE;
+  if (report_host)
+    report_host_len= strlen(report_host);
+  if (report_host_len > HOSTNAME_LENGTH)
+  {
+//    sql_print_warning("The length of report_host is %zu. "
+//                              "It is larger than the max length(%d), so this "
+//                              "slave cannot be registered to the master%s.",
+//                      report_host_len, HOSTNAME_LENGTH,
+//                      mi->get_for_channel_str());
+    DBUG_RETURN(0);
+  }
+
+  if (report_user)
+    report_user_len= strlen(report_user);
+  if (report_user_len > USERNAME_LENGTH)
+  {
+//    sql_print_warning("The length of report_user is %zu. "
+//                              "It is larger than the max length(%d), so this "
+//                              "slave cannot be registered to the master%s.",
+//                      report_user_len, USERNAME_LENGTH, mi->get_for_channel_str());
+    DBUG_RETURN(0);
+  }
+
+  if (report_password)
+    report_password_len= strlen(report_password);
+  if (report_password_len > MAX_PASSWORD_LENGTH)
+  {
+//    sql_print_warning("The length of report_password is %zu. "
+//                              "It is larger than the max length(%d), so this "
+//                              "slave cannot be registered to the master%s.",
+//                      report_password_len, MAX_PASSWORD_LENGTH,
+//                      mi->get_for_channel_str());
+    DBUG_RETURN(0);
+  }
+
+  int4store(pos,connection_server_id); pos+= 4;
+  pos= net_store_data(pos, (uchar*) report_host, report_host_len);
+  pos= net_store_data(pos, (uchar*) report_user, report_user_len);
+  pos= net_store_data(pos, (uchar*) report_password, report_password_len);
+  int2store(pos, (uint16) report_port); pos+= 2;
+  /*
+    Fake rpl_recovery_rank, which was removed in BUG#13963,
+    so that this server can register itself on old servers,
+    see BUG#49259.
+   */
+  int4store(pos, /* rpl_recovery_rank */ 0);    pos+= 4;
+  /* The master will fill in master_id */
+  int4store(pos, 0);                    pos+= 4;
+
+  if (simple_command(mysql, COM_REGISTER_SLAVE, buf, (size_t) (pos- buf), 0))
+  {
+    if (mysql_errno(mysql) == ER_NET_READ_INTERRUPTED)
+    {
+      *suppress_warnings= TRUE;                 // Suppress reconnect warning
+    }
+//    else if (!check_io_slave_killed(mi->info_thd, mi, NULL))
+//    {
+//      char buf[256];
+//      my_snprintf(buf, sizeof(buf), "%s (Errno: %d)", mysql_error(mysql),
+//                  mysql_errno(mysql));
+//      mi->report(ERROR_LEVEL, ER_SLAVE_MASTER_COM_FAILURE,
+//                 ER(ER_SLAVE_MASTER_COM_FAILURE), "COM_REGISTER_SLAVE", buf);
+//    }
+    DBUG_RETURN(1);
+  }
+  DBUG_RETURN(0);
+}
+
+
+/**
+ * set replication heartbeat period.
+ * @param mysql
+ * @return -1 failed; 0 successfully.
+ */
+int set_heartbeat_period(MYSQL* mysql)
+{
+  MYSQL_RES* res;
+  char* query = new char[100];
+  sprintf(query,"set @master_heartbeat_period= %lu",heartbeat_period*1000000000);
+  if(mysql_real_query(mysql,query,strlen(query)))
+  {
+    error("%s error %s,%i",query,mysql_error(mysql),mysql_errno(mysql));
+    return -1;
+  }
+  return 0;
+}
+
