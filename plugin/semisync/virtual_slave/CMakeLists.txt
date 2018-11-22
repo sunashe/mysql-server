@@ -38,7 +38,7 @@ SET(SEMISYNC_SLAVE_SOURCES  semisync.cc semisync_slave.cc
 add_library(semisync_slave_for_virtual_slave SHARED ${SEMISYNC_SLAVE_SOURCES})
 target_link_libraries(semisync_slave_for_virtual_slave mysqlclient)
 
-MYSQL_ADD_EXECUTABLE(virtual_slave virtual_slave.cc)
+MYSQL_ADD_EXECUTABLE(virtual_slave virtual_slave.cc Config/Config.cc)
 
 ADD_COMPILE_FLAGS(
         virtual_slave.cc

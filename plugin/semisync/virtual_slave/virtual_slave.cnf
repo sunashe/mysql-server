@@ -1,0 +1,30 @@
+
+#replication protocol GTID or file+pos
+opt_remote_proto=1
+
+#mode for get start pos.
+get_start_gtid_mode=1
+
+exclude_gtids=cdfe45e6-c227-11e8-abf5-001c42bf9720:1-4
+
+virtual_slave_server_id=123456
+
+raw_mode=1
+
+master_host=10.211.55.32
+
+master_port=13307
+
+master_user=ashe
+
+master_password=ashe
+
+stop_never = 1
+
+#--result-file=/data/binlog_backup/
+binlog_dir=/data/binlog_backup/
+
+# last parma
+mysql-bin.000001
+
+heartbeat_period = 15

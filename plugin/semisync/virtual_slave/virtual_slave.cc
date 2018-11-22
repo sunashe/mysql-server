@@ -35,6 +35,8 @@
 #include <my_time.h>
 #include <sslopt-vars.h>
 #include "semisync_slave_plugin.h"
+#include <string>
+using std::string;
 
 /* That one is necessary for defines of OPTION_NO_FOREIGN_KEY_CHECKS etc */
 #include "query_options.h"
@@ -43,6 +45,7 @@
 
 #include "prealloced_array.h"
 #include <virtual_slave.h>
+#include "Config/config.h"
 
 /*
   error() is used in macro BINLOG_ERROR which is invoked in
@@ -363,7 +366,7 @@ static char *charset= 0;
 
 static uint verbose= 0;
 
-static ulonglong start_position, stop_position;
+static ulonglong start_position=4, stop_position;
 #define start_position_mot ((my_off_t)start_position)
 #define stop_position_mot  ((my_off_t)stop_position)
 
@@ -2046,12 +2049,32 @@ static void warning(const char *format,...)
 */
 static void cleanup()
 {
-  my_free(pass);
-  my_free(database);
+//  my_free(pass);
+//  my_free(database);
   my_free(rewrite);
-  my_free(host);
-  my_free(user);
+//  my_free(host);
+//  my_free(user);
   my_free(dirname_for_local_load);
+  if(pass)
+  {
+    delete pass;
+  }
+  if(database)
+  {
+    delete database;
+  }
+
+  if(host)
+  {
+    delete host;
+  }
+
+  if(user)
+  {
+    delete user;
+  }
+
+
 
   for (size_t i= 0; i < buff_ev->size(); i++)
   {
@@ -2371,15 +2394,23 @@ static Exit_status dump_multiple_logs(int argc, char **argv)
   // Dump all logs.
   my_off_t save_stop_position= stop_position;
   stop_position= ~(my_off_t)0;
-  for (int i= 0; i < argc; i++)
+//  for (int i= 0; i < argc; i++)
+//  {
+//    if (i == argc - 1) // last log, --stop-position applies
+//      stop_position= save_stop_position;
+//    const char* start_binlog_file="mysql-bin.000001";
+//    if ((rc= dump_single_log(&print_event_info, start_binlog_file)) != OK_CONTINUE)
+//      break;
+//
+//    // For next log, --start-position does not apply
+//    start_position= BIN_LOG_HEADER_SIZE;
+//  }
+  stop_position = save_stop_position;
+  const char* start_binlog_file="mysql-bin-000001";
+  start_position= BIN_LOG_HEADER_SIZE;
+  if((rc = dump_single_log(&print_event_info,start_binlog_file)) != OK_CONTINUE)
   {
-    if (i == argc - 1) // last log, --stop-position applies
-      stop_position= save_stop_position;
-    if ((rc= dump_single_log(&print_event_info, argv[i])) != OK_CONTINUE)
-      break;
-
-    // For next log, --start-position does not apply
-    start_position= BIN_LOG_HEADER_SIZE;
+    error("dump single log error");
   }
 
   if (!buff_ev->empty())
@@ -2648,6 +2679,9 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
   }
   else
   {
+
+    bool suppress_warnings;
+    register_slave_on_master(mysql,&suppress_warnings);
     command= COM_BINLOG_DUMP_GTID;
     char* real_log_name="";
     BINLOG_NAME_INFO_SIZE= strlen(real_log_name);
@@ -2812,12 +2846,12 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
         {
           if (!to_last_remote_log)
           {
-            if ((rev->ident_len != logname_len) ||
-                memcmp(rev->new_log_ident, logname, logname_len))
-            {
-              reset_temp_buf_and_delete(rev);
-              DBUG_RETURN(OK_CONTINUE);
-            }
+//            if ((rev->ident_len != logname_len) ||
+//                memcmp(rev->new_log_ident, logname, logname_len))
+//            {
+//              reset_temp_buf_and_delete(rev);
+//              DBUG_RETURN(OK_CONTINUE);
+//            }
             /*
               Otherwise, this is a fake Rotate for our log, at the very
               beginning for sure. Skip it, because it was not in the original
@@ -3406,6 +3440,7 @@ inline bool gtid_client_init()
   return res;
 }
 
+
 int main(int argc, char** argv)
 {
   char **defaults_argv;
@@ -3430,21 +3465,57 @@ int main(int argc, char** argv)
   */
   buff_ev= new Buff_ev(PSI_NOT_INSTRUMENTED);
 
-  my_getopt_use_args_separator= TRUE;
-  if (load_defaults("my", load_default_groups, &argc, &argv))
-    exit(1);
-  my_getopt_use_args_separator= FALSE;
-  defaults_argv= argv;
-
-  parse_args(&argc, &argv);
-
-  if (!argc)
+//  my_getopt_use_args_separator= TRUE;
+//  if (load_defaults("my", load_default_groups, &argc, &argv))
+//    exit(1);
+//  my_getopt_use_args_separator= FALSE;
+//  defaults_argv= argv;
+//
+//  parse_args(&argc, &argv);
+  if(argc > 2)
   {
-    usage();
-    free_defaults(defaults_argv);
-    my_end(my_end_arg);
+    error("There are too many parameters.\nusage: virtual_slave virtual_slave.cnf");
     exit(1);
   }
+  //read config file.
+
+  Config virtual_slave_config(argv[1]);
+
+  string _s_user = virtual_slave_config.Read("master_user",user);
+  user = string_to_char(_s_user);
+
+  string _s_host = virtual_slave_config.Read("master_host",host);
+  host = string_to_char(_s_host);
+
+  port = virtual_slave_config.Read("master_port",0);
+
+  string _s_pass = virtual_slave_config.Read("master_password",pass);
+  pass = string_to_char(_s_pass);
+
+  heartbeat_period = virtual_slave_config.Read("heartbeat_period",0);
+  int _int_opt_remote_proto = virtual_slave_config.Read("opt_remote_proto",_int_opt_remote_proto);
+  opt_remote_proto = (enum_remote_proto)_int_opt_remote_proto;
+
+  get_start_gtid_mode = virtual_slave_config.Read("get_start_gtid_mode",0);
+  connection_server_id = virtual_slave_config.Read("virtual_slave_server_id",0);
+  raw_mode = virtual_slave_config.Read("raw_mode",0);
+  stop_never = virtual_slave_config.Read("stop_never",0);
+
+  string _s_output_file = virtual_slave_config.Read("binlog_dir",_s_output_file);
+  output_file = string_to_char(_s_output_file);
+
+  string _s_opt_exclude_gtids_str = virtual_slave_config.Read("exclude_gtids",_s_opt_exclude_gtids_str);
+  opt_exclude_gtids_str = string_to_char(_s_opt_exclude_gtids_str);
+
+
+
+//  if (!argc)
+//  {
+//    usage();
+//    free_defaults(defaults_argv);
+//    my_end(my_end_arg);
+//    exit(1);
+//  }
 
   if (gtid_client_init())
   {
@@ -3624,6 +3695,7 @@ int register_slave_on_master(MYSQL* mysql,/* Master_info *mi,*/
     report_host_len= strlen(report_host);
   if (report_host_len > HOSTNAME_LENGTH)
   {
+    // todo log here
 //    sql_print_warning("The length of report_host is %zu. "
 //                              "It is larger than the max length(%d), so this "
 //                              "slave cannot be registered to the master%s.",
@@ -3636,6 +3708,7 @@ int register_slave_on_master(MYSQL* mysql,/* Master_info *mi,*/
     report_user_len= strlen(report_user);
   if (report_user_len > USERNAME_LENGTH)
   {
+    //todo log here
 //    sql_print_warning("The length of report_user is %zu. "
 //                              "It is larger than the max length(%d), so this "
 //                              "slave cannot be registered to the master%s.",
@@ -3647,6 +3720,7 @@ int register_slave_on_master(MYSQL* mysql,/* Master_info *mi,*/
     report_password_len= strlen(report_password);
   if (report_password_len > MAX_PASSWORD_LENGTH)
   {
+    //todo log here
 //    sql_print_warning("The length of report_password is %zu. "
 //                              "It is larger than the max length(%d), so this "
 //                              "slave cannot be registered to the master%s.",
@@ -3685,6 +3759,18 @@ int register_slave_on_master(MYSQL* mysql,/* Master_info *mi,*/
 //    }
     DBUG_RETURN(1);
   }
+
+  if(set_heartbeat_period(mysql) !=0)
+  {
+    //todo log here
+    return -1;
+  }
+
+  if(set_slave_uuid(mysql) !=0)
+  {
+    //todo log here
+    return -1;
+  }
   DBUG_RETURN(0);
 }
 
@@ -3697,9 +3783,15 @@ int register_slave_on_master(MYSQL* mysql,/* Master_info *mi,*/
 int set_heartbeat_period(MYSQL* mysql)
 {
   MYSQL_RES* res;
-  char* query = new char[100];
-  sprintf(query,"set @master_heartbeat_period= %lu",heartbeat_period*1000000000);
-  if(mysql_real_query(mysql,query,strlen(query)))
+  char llbuf[22];
+  const char query_format[]= "SET @master_heartbeat_period= %s";
+  char query[sizeof(query_format) - 2 + sizeof(llbuf)];
+  /*
+     the period is an ulonglong of nano-secs.
+  */
+  llstr((ulonglong) (heartbeat_period*1000000000UL), llbuf);
+  sprintf(query, query_format, llbuf);
+  if(mysql_real_query(mysql,query,static_cast<ulong>(strlen(query))))
   {
     error("%s error %s,%i",query,mysql_error(mysql),mysql_errno(mysql));
     return -1;
@@ -3707,3 +3799,26 @@ int set_heartbeat_period(MYSQL* mysql)
   return 0;
 }
 
+int set_slave_uuid(MYSQL* mysql)
+{
+  char* query = new char[100];
+  sprintf(query,"SET @slave_uuid= '63cf7450-9829-11e7-8a58-000c2985ca33'");
+  if(mysql_real_query(mysql,query,strlen(query)))
+  {
+    error("%s error %s,%i",query,mysql_error(mysql),mysql_errno(mysql));
+    delete query;
+    return -1;
+  }
+  return 0;
+}
+
+char* string_to_char(string str)
+{
+  char* p  = new char[str.length()+1];
+  for(int i=0;i<str.length();i++)
+  {
+    p[i]=str[i];
+  }
+  p[str.length()] = '\0';
+  return p;
+}
