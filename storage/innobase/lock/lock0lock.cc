@@ -1436,9 +1436,22 @@ RecLock::lock_alloc(
 
 	lock_t*	lock;
 
+
+	ulint trx_lock_rec_pool_size = trx->lock.rec_pool.size();
+	ulint trx_lock_rec_cached = trx->lock.rec_cached;
+	ib::info() << "current trx: "
+						 << trx->id
+						 << " rec lock pool total size: "
+						 << trx_lock_rec_pool_size;
+
 	if (trx->lock.rec_cached >= trx->lock.rec_pool.size()
 	    || sizeof(*lock) + size > REC_LOCK_SIZE) {
 
+		ib::info() << "current trx: "
+							 << trx->id
+							 <<" rec lock cached: "
+							 << trx_lock_rec_cached
+							 <<" rec lock pool run out of.";
 		ulint		n_bytes = size + sizeof(*lock);
 		mem_heap_t*	heap = trx->lock.lock_heap;
 
@@ -1885,6 +1898,14 @@ lock_rec_add_to_queue(
 
 		if (lock != NULL) {
 
+			ib::info() << "trx: "
+								 <<trx->id
+								 <<" slower lock and find a similar record lock on the same page,just set bit map for space_page_heap_no: "
+								 << lock->un_member.rec_lock.space
+								 << ":"
+								 << lock->un_member.rec_lock.page_no
+								 << ":"
+								 << heap_no;
 			lock_rec_set_nth_bit(lock, heap_no);
 
 			return;
@@ -1969,6 +1990,21 @@ lock_rec_lock_fast(
 			if (!lock_rec_get_nth_bit(lock, heap_no)) {
 				lock_rec_set_nth_bit(lock, heap_no);
 				status = LOCK_REC_SUCCESS_CREATED;
+				ib::info() << "trx: "
+									 <<trx->id
+									 <<" fast lock and just set bit map for space_page_heap_no: "
+									 << lock->un_member.rec_lock.space
+									 << ":"
+									 << lock->un_member.rec_lock.page_no
+				           << ":"
+									 << heap_no;
+
+			}
+			else
+			{
+				ib::info() << "trx: "
+									 << trx->id
+									 << " has locked this row and do nothing with lock sys.";
 			}
 		}
 
