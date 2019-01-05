@@ -4575,7 +4575,13 @@ row_search_mvcc(
 	ulint		match_mode,
 	ulint		direction)
 {
-	DBUG_ENTER("row_search_mvcc");
+	DBUG_ENTER("row_search_mvcc\n");
+	ib::info() << "row_search_mvcc:\nsearch mode:"
+						 << mode << " (PAGE_CUR_UNSUPP= 0,PAGE_CUR_G= 1,PAGE_CUR_GE= 2,PAGE_CUR_L= 3,PAGE_CUR_LE= 4)\n"
+						 << "match_mode:"
+						 << match_mode  << " (ROW_SEL_EXACT = 1,ROW_SEL_EXACT_PREFIX=2)\n"
+						 << "direction:"
+						 << direction <<" (ROW_SEL_NEXT = 1,ROW_SEL_PREV = 2)\n";
 
 	dict_index_t*	index		= prebuilt->index;
 	ibool		comp		= dict_table_is_comp(index->table);
@@ -5108,6 +5114,7 @@ wait_table_again:
 
 			offsets = rec_get_offsets(next_rec, index, offsets,
 						  ULINT_UNDEFINED, &heap);
+			ib::info() << "set gap lock for next record heap_no:" << page_rec_get_heap_no(next_rec);
 			err = sel_set_rec_lock(pcur,
 					       next_rec, index, offsets,
 					       prebuilt->select_lock_type,
@@ -5696,11 +5703,14 @@ locks_ok:
 		if (did_semi_consistent_read) {
 			row_unlock_for_mysql(prebuilt, TRUE);
 		}
+		ib::info() << "ICP_NO_MATCH\n";
 		goto next_rec;
 	case ICP_OUT_OF_RANGE:
 		err = DB_RECORD_NOT_FOUND;
+		ib::info() << "ICP_OUT_OF_RANGE\n";
 		goto idx_cond_failed;
 	case ICP_MATCH:
+	  ib::info() << "ICP_MATCH\n";
 		break;
 	}
 
@@ -5727,6 +5737,7 @@ requires_clust_rec:
 		'clust_rec'. Note that 'clust_rec' can be an old version
 		built for a consistent read. */
 
+		ib::info() << "requires_clust_rec";
 		err = row_sel_get_clust_rec_for_mysql(prebuilt, index, rec,
 						      thr, &clust_rec,
 						      &offsets, &heap,
@@ -6054,7 +6065,9 @@ next_rec:
 			move = rtr_pcur_move_to_next(
 				search_tuple, mode, pcur, 0, &mtr);
 		} else {
+			ib::info() << "move pcur up"  ;
 			move = btr_pcur_move_to_next(pcur, &mtr);
+			ib::info() << "pcur match record heap_no:" << page_rec_get_heap_no(btr_pcur_get_rec(pcur));
 		}
 
 		if (!move) {

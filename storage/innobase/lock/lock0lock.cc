@@ -1439,10 +1439,10 @@ RecLock::lock_alloc(
 
 	ulint trx_lock_rec_pool_size = trx->lock.rec_pool.size();
 	ulint trx_lock_rec_cached = trx->lock.rec_cached;
-	ib::info() << "current trx: "
-						 << trx->id
-						 << " rec lock pool total size: "
-						 << trx_lock_rec_pool_size;
+//	ib::info() << "current trx: "
+//						 << trx->id
+//						 << " rec lock pool total size: "
+//						 << trx_lock_rec_pool_size;
 
 	if (trx->lock.rec_cached >= trx->lock.rec_pool.size()
 	    || sizeof(*lock) + size > REC_LOCK_SIZE) {
