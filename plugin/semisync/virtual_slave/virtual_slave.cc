@@ -2310,6 +2310,10 @@ static Exit_status safe_connect()
     mysql_options(mysql, MYSQL_OPT_PROTOCOL, (char*) &opt_protocol);
   if (opt_bind_addr)
     mysql_options(mysql, MYSQL_OPT_BIND, opt_bind_addr);
+  if(net_read_time_out)
+  {
+    mysql_options(mysql,MYSQL_OPT_READ_TIMEOUT,&net_read_time_out);
+  }
 #if defined (_WIN32) && !defined (EMBEDDED_LIBRARY)
   if (shared_memory_base_name)
     mysql_options(mysql, MYSQL_SHARED_MEMORY_BASE_NAME,
@@ -2577,6 +2581,9 @@ Binlog_relay_IO_param* binlogRelayIoParam;
 static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
                                            const char* logname)
 {
+  const char *error_msg= NULL;
+  Log_event *ev= NULL;
+  Log_event_type type= binary_log::UNKNOWN_EVENT;
   uchar *command_buffer= NULL;
   size_t command_size= 0;
   ulong len= 0;
@@ -2589,6 +2596,8 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
   char log_file_name[FN_REFLEN + 1];
   Exit_status retval= OK_CONTINUE;
   enum enum_server_command command= COM_END;
+  const bool should_fflush= true;
+  bool should_fsync = false;
 
   DBUG_ENTER("dump_remote_log_entries");
 
@@ -2705,7 +2714,6 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
       DBUG_RETURN(ERROR_STOP);
     }
     uchar* ptr_buffer= command_buffer;
-
     int2store(ptr_buffer, get_dump_flags());
     ptr_buffer+= ::BINLOG_FLAGS_INFO_SIZE;
     int4store(ptr_buffer, server_id);
@@ -2739,27 +2747,22 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
   char new_binlog_file_name[FN_REFLEN + 1];
   for (;;)
   {
-    const char *error_msg= NULL;
-    Log_event *ev= NULL;
-    Log_event_type type= binary_log::UNKNOWN_EVENT;
-
     len = cli_safe_read(mysql, NULL);
-    len--;
-   // error("event len: %u",len);
     if (len == packet_error)
     {
+
       error("Got error reading packet from server: %s", mysql_error(mysql));
       DBUG_RETURN(ERROR_STOP);
     }
+    len--;
     if (len < 8 && net->read_pos[0] == 254)
       break; // end of data
-    DBUG_PRINT("info",( "len: %lu  net->read_pos[5]: %d\n",
-			len, net->read_pos[5]));
+//      DBUG_PRINT("info",( "len: %lu  net->read_pos[5]: %d\n",
+//			len, net->read_pos[5]));
     /*
       In raw mode We only need the full event details if it is a 
       ROTATE_EVENT or FORMAT_DESCRIPTION_EVENT
     */
-
     const char* event_buf;
     event_buf= (const char *) net->read_pos + 1;
     if(handle_repl_semi_slave_read_event((void*)binlogRelayIoParam,(char*)net->read_pos+1,len,&event_buf,&len))
@@ -3472,13 +3475,13 @@ int main(int argc, char** argv)
 //  defaults_argv= argv;
 //
 //  parse_args(&argc, &argv);
-  if(argc > 2)
+  if(argc != 2)
   {
     error("There are too many parameters.\nusage: virtual_slave virtual_slave.cnf");
     exit(1);
   }
-  //read config file.
 
+  //read config file.
   Config virtual_slave_config(argv[1]);
 
   string _s_user = virtual_slave_config.Read("master_user",user);
@@ -3493,6 +3496,7 @@ int main(int argc, char** argv)
   pass = string_to_char(_s_pass);
 
   heartbeat_period = virtual_slave_config.Read("heartbeat_period",0);
+  net_read_time_out = virtual_slave_config.Read("net_read_time_out",0);
   int _int_opt_remote_proto = virtual_slave_config.Read("opt_remote_proto",_int_opt_remote_proto);
   opt_remote_proto = (enum_remote_proto)_int_opt_remote_proto;
 

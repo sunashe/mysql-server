@@ -1,4 +1,3 @@
-
 #replication protocol GTID or file+pos
 opt_remote_proto=1
 
@@ -27,4 +26,5 @@ binlog_dir=/data/binlog_backup/
 # last parma
 mysql-bin.000001
 
-heartbeat_period = 15
+heartbeat_period = 5
+net_read_time_out = 10

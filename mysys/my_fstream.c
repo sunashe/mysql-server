@@ -145,6 +145,8 @@ size_t my_fwrite(FILE *stream, const uchar *Buffer, size_t Count, myf MyFlags)
       writtenbytes+= written;
     break;
   }
+  fflush(stream);
+  fsync(fileno(stream));
   DBUG_RETURN(writtenbytes);
 } /* my_fwrite */
 

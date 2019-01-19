@@ -12,6 +12,7 @@ char* report_user = "ashe";
 uint report_port = 3239;
 uint heartbeat_period = 15;
 uint get_start_gtid_mode;
+uint net_read_time_out;
 
 int register_slave_on_master(MYSQL* mysql,bool *suppress_warnings);
 int set_heartbeat_period(MYSQL* mysql);
