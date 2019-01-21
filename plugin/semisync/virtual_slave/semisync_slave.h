@@ -19,7 +19,6 @@
 #define SEMISYNC_SLAVE_H
 
 #include "semisync.h"
-
 /**
    The extension class for the slave of semi-synchronous replication
 */

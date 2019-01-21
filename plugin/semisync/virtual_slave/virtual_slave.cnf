@@ -4,13 +4,13 @@ opt_remote_proto=1
 #mode for get start pos.
 get_start_gtid_mode=1
 
-exclude_gtids=cdfe45e6-c227-11e8-abf5-001c42bf9720:1-4
+exclude_gtids=9ad89abf-1bb8-11e9-813f-001c42c12883:1-2
 
 virtual_slave_server_id=123456
 
 raw_mode=1
 
-master_host=10.211.55.32
+master_host=10.211.55.46
 
 master_port=13307
 

@@ -159,120 +159,12 @@ int repl_semi_slave_sql_stop(Binlog_relay_IO_param *param, bool aborted)
 
 C_MODE_END
 
-//static void fix_rpl_semi_sync_slave_enabled(MYSQL_THD thd,
-//					    SYS_VAR *var,
-//					    void *ptr,
-//					    const void *val)
-//{
-//  *(char *)ptr= *(char *)val;
-//  repl_semisync.setSlaveEnabled(rpl_semi_sync_slave_enabled != 0);
-//  return;
-//}
-
-//static void fix_rpl_semi_sync_trace_level(MYSQL_THD thd,
-//					  SYS_VAR *var,
-//					  void *ptr,
-//					  const void *val)
-//{
-//  *(unsigned long *)ptr= *(unsigned long *)val;
-//  repl_semisync.setTraceLevel(rpl_semi_sync_slave_trace_level);
-//  return;
-//}
-
-///* plugin system variables */
-//static MYSQL_SYSVAR_BOOL(enabled, rpl_semi_sync_slave_enabled,
-//  PLUGIN_VAR_OPCMDARG,
-// "Enable semi-synchronous replication slave (disabled by default). ",
-//  NULL,				   // check
-//  &fix_rpl_semi_sync_slave_enabled, // update
-//  0);
-
-//static MYSQL_SYSVAR_ULONG(trace_level, rpl_semi_sync_slave_trace_level,
-//  PLUGIN_VAR_OPCMDARG,
-// "The tracing level for semi-sync replication.",
-//  NULL,				  // check
-//  &fix_rpl_semi_sync_trace_level, // update
-//  32, 0, ~0UL, 1);
-
-//static SYS_VAR* semi_sync_slave_system_vars[]= {
-//  MYSQL_SYSVAR(enabled),
-//  MYSQL_SYSVAR(trace_level),
-//  NULL,
-//};
-
-
-/* plugin status variables */
-//static SHOW_VAR semi_sync_slave_status_vars[]= {
-//  {"Rpl_semi_sync_slave_status",
-//   (char*) &rpl_semi_sync_slave_status, SHOW_BOOL, SHOW_SCOPE_GLOBAL},
-//  {NULL, NULL, SHOW_BOOL, SHOW_SCOPE_GLOBAL},
-//};
-
-Binlog_relay_IO_observer relay_io_observer = {
-  sizeof(Binlog_relay_IO_observer), // len
-
-  repl_semi_slave_io_start,	// start
-  repl_semi_slave_io_end,	// stop
-  repl_semi_slave_sql_start,    // start sql thread
-  repl_semi_slave_sql_stop,     // stop sql thread
-  repl_semi_slave_request_dump,	// request_transmit
-  repl_semi_slave_read_event,	// after_read_event
-  repl_semi_slave_queue_event,	// after_queue_event
-  repl_semi_reset_slave,	// reset
-};
-
 
 int symisync_slave_init()
 {
   return repl_semisync.initObject();
 }
 
-//static int semi_sync_slave_plugin_init(void *p)
-//{
-//  if (repl_semisync.initObject())
-//    return 1;
-//  if (register_binlog_relay_io_observer(&relay_io_observer, p))
-//    return 1;
-//  return 0;
-//}
-//
-//static int semi_sync_slave_plugin_deinit(void *p)
-//{
-//  if (unregister_binlog_relay_io_observer(&relay_io_observer, p))
-//    return 1;
-//  return 0;
-//}
-
-//
-//struct Mysql_replication semi_sync_slave_plugin= {
-//  MYSQL_REPLICATION_INTERFACE_VERSION
-//};
-//
-///*
-//  Plugin library descriptor
-//*/
-//mysql_declare_plugin(semi_sync_slave)
-//{
-//  MYSQL_REPLICATION_PLUGIN,
-//  &semi_sync_slave_plugin,
-//  "rpl_semi_sync_slave",
-//  "He Zhenxing",
-//  "Semi-synchronous replication slave",
-//  PLUGIN_LICENSE_GPL,
-//  semi_sync_slave_plugin_init, /* Plugin Init */
-//  semi_sync_slave_plugin_deinit, /* Plugin Deinit */
-//  0x0100 /* 1.0 */,
-//  semi_sync_slave_status_vars,	/* status variables */
-//  semi_sync_slave_system_vars,	/* system variables */
-//  NULL,                         /* config options */
-//  0,                            /* flags */
-//}
-//mysql_declare_plugin_end;
-
-int handle_repl_semi_reset_slave(void *param)
-{
-  return repl_semi_reset_slave((Binlog_relay_IO_param*) param);
-}
 int handle_repl_semi_slave_request_dump(void *param,
                                         uint32 flags)
 {

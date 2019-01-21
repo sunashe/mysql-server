@@ -21,18 +21,37 @@
 #define MYSQL_SERVER
 #define HAVE_REPLICATION
 
-#include <my_global.h>
-#include <my_thread.h>
-#include <mysql/plugin.h>
-#include <replication.h>
-#include "log.h"                                /* sql_print_information */
+
+#include <mysql/my_global.h>
+#include <mysql/my_thread.h>
+#include <mysql/my_thread_local.h>
+#include <mysql/mysql.h>
+//#include "log.h"                                /* sql_print_information */
 #include <stdio.h>
 #define sql_print_warning printf
 #define sql_print_error printf
 #define sql_print_information printf
 
-typedef struct st_mysql_show_var SHOW_VAR;
-typedef struct st_mysql_sys_var SYS_VAR;
+/**
+  Replication binlog relay IO observer parameter
+*/
+typedef struct Binlog_relay_IO_param {
+    uint32 server_id;
+    my_thread_id thread_id;
+
+    /* Channel name */
+    char* channel_name;
+
+    /* Master host, user and port */
+    char *host;
+    char *user;
+    unsigned int port;
+
+    char *master_log_name;
+    my_off_t master_log_pos;
+
+    MYSQL *mysql;                        /* the connection to master */
+} Binlog_relay_IO_param;
 
 
 /**

@@ -15,8 +15,6 @@
 
 
 #include "semisync_slave.h"
-#include "mysql.h"
-#include "debug_sync.h"
 
 char rpl_semi_sync_slave_enabled;
 char rpl_semi_sync_slave_status= 0;

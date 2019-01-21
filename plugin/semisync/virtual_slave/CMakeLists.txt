@@ -19,12 +19,6 @@ IF(SSL_DEFINES)
 ENDIF()
 
 INCLUDE_DIRECTORIES(
-        ${CMAKE_SOURCE_DIR}/client
-        ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/mysys_ssl
-        ${ZLIB_INCLUDE_DIR}
-        ${LZ4_INCLUDE_DIR}
-        ${SSL_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/libmysql
         ${CMAKE_SOURCE_DIR}/libbinlogevents/include
         ${CMAKE_SOURCE_DIR}/regex
@@ -42,6 +36,7 @@ MYSQL_ADD_EXECUTABLE(virtual_slave virtual_slave.cc Config/Config.cc)
 
 ADD_COMPILE_FLAGS(
         virtual_slave.cc
-        COMPILE_FLAGS "-I${CMAKE_SOURCE_DIR}/sql" "-DHAVE_REPLICATION" "-DDISABLE_PSI_MUTEX"
+        COMPILE_FLAGS "-I${CMAKE_SOURCE_DIR}/sql -DHAVE_REPLICATION -DDISABLE_PSI_MUTEX"
 )
+#TARGET_LINK_LIBRARIES(virtual_slave  binlogevents_static semisync_slave_for_virtual_slave)
 TARGET_LINK_LIBRARIES(virtual_slave  binlogevents_static semisync_slave_for_virtual_slave)
