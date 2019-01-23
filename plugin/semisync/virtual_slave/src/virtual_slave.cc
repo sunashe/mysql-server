@@ -17,8 +17,8 @@
 
 #define MYSQL_CLIENT
 #undef MYSQL_SERVER
-#include "./include/my_default.h"
-#include "./include/my_time.h"
+#include "my_default.h"
+#include "my_time.h"
 #include "semisync_slave_plugin.h"
 #include <string>
 using std::string;
@@ -27,13 +27,13 @@ using std::string;
 #include <mysql/errmsg.h>
 
 /* That one is necessary for defines of OPTION_NO_FOREIGN_KEY_CHECKS etc */
-#include "./include/query_options.h"
+#include "query_options.h"
 #include <signal.h>
-#include "./include/my_dir.h"
+#include "my_dir.h"
 
-#include "./include/prealloced_array.h"
+#include "prealloced_array.h"
 #include "virtual_slave.h"
-#include "Config/config.h"
+#include "Config/Config.h"
 /*
   error() is used in macro BINLOG_ERROR which is invoked in
   rpl_gtid.h, hence the early forward declaration.
@@ -43,15 +43,15 @@ static void error(const char *format, ...)
 static void warning(const char *format, ...)
   MY_ATTRIBUTE((format(printf, 1, 2)));
 
-#include "./include/rpl_gtid.h"
-#include "./include/log_event.h"
-#include "./include/log_event_old.h"
-#include "./include/rpl_constants.h"
+#include "rpl_gtid.h"
+#include "log_event.h"
+#include "log_event_old.h"
+#include "rpl_constants.h"
 #include <mysql/sql_common.h>
 #include <mysql/my_dir.h>
-#include "./include/welcome_copyright_notice.h" // ORACLE_WELCOME_COPYRIGHT_NOTICE
-#include "./include/sql_string.h"
-#include "./include/my_decimal.h"
+#include "welcome_copyright_notice.h" // ORACLE_WELCOME_COPYRIGHT_NOTICE
+#include "sql_string.h"
+#include "my_decimal.h"
 
 #include <algorithm>
 #include <utility>
@@ -344,7 +344,6 @@ static void cleanup()
   }
 
 
-
   for (size_t i= 0; i < buff_ev->size(); i++)
   {
     buff_event_info pop_event_array= buff_ev->at(i);
@@ -596,8 +595,6 @@ static int get_dump_flags()
 {
   return stop_never ? 0 : BINLOG_DUMP_NON_BLOCK;
 }
-
-
 
 typedef struct Binlog_relay_IO_param {
     uint32 server_id;
@@ -990,6 +987,22 @@ static Exit_status dump_remote_log_entries(PRINT_EVENT_INFO *print_event_info,
     old_off+= len-1;
     binlogRelayIoParam->master_log_name = new_binlog_file_name;
     binlogRelayIoParam->master_log_pos = total_bytes;
+
+    //flush or flush+sync binlog file befor replay ack=
+    if(fflush(result_file))
+    {
+      //todo log here
+      return ERROR_STOP;
+    }
+
+    if(semi_sync_need_reply)
+    {
+      if(fsync(fileno(result_file)))
+      {
+        //@todo log here.
+        return ERROR_STOP;
+      }
+    }
     handle_repl_semi_slave_queue_event((void*)binlogRelayIoParam,event_buf,0,0);
 
   }

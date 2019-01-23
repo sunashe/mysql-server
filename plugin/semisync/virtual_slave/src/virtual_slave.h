@@ -19,5 +19,6 @@ int register_slave_on_master(MYSQL* mysql,bool *suppress_warnings);
 int set_heartbeat_period(MYSQL* mysql);
 int set_slave_uuid(MYSQL* mysql);
 char* string_to_char(string str);
+extern bool semi_sync_need_reply;
 
 #endif //MYSQL_VIRTUAL_SLAVE_H
