@@ -1699,8 +1699,8 @@ int main(int argc, char** argv)
   the server
 */
 
-#include "decimal.c"
-#include "my_decimal.cc"
+//#include "decimal.c"
+//#include "my_decimal.cc"
 #include "log_event.cc"
 #include "log_event_old.cc"
 #include "rpl_utility.cc"

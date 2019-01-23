@@ -19,12 +19,6 @@ IF(SSL_DEFINES)
 ENDIF()
 
 INCLUDE_DIRECTORIES(
-        ${CMAKE_SOURCE_DIR}/libmysql
-        ${CMAKE_SOURCE_DIR}/libbinlogevents/include
-        ${CMAKE_SOURCE_DIR}/regex
-        ${CMAKE_SOURCE_DIR}/strings
-        ${EDITLINE_INCLUDE_DIR}
-        ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 SET(SEMISYNC_SLAVE_SOURCES  semisync.cc semisync_slave.cc
@@ -39,4 +33,4 @@ ADD_COMPILE_FLAGS(
         COMPILE_FLAGS "-I${CMAKE_SOURCE_DIR}/sql -DHAVE_REPLICATION -DDISABLE_PSI_MUTEX"
 )
 #TARGET_LINK_LIBRARIES(virtual_slave  binlogevents_static semisync_slave_for_virtual_slave)
-TARGET_LINK_LIBRARIES(virtual_slave  binlogevents_static semisync_slave_for_virtual_slave)
+TARGET_LINK_LIBRARIES(virtual_slave binlogevents_static semisync_slave_for_virtual_slave)
