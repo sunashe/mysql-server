@@ -4205,6 +4205,7 @@ innobase_flush_logs(
 	log_buffer_flush_to_disk(!binlog_group_flush
 				 || srv_flush_log_at_trx_commit == 1);
 
+	ib::info() << "Innodb flush logs befor binlog flush,log_sys->flushed_to_disk_lsn = "  << log_sys->flushed_to_disk_lsn;
 	DBUG_RETURN(false);
 }
 
@@ -4429,6 +4430,7 @@ innobase_commit(
 	trx->fts_next_doc_id = 0;
 
 	innobase_srv_conc_force_exit_innodb(trx);
+	ib::info() << "after commit, log_sys->flushed_to_disk_lsn =" << log_sys->flushed_to_disk_lsn ;
 
 	DBUG_RETURN(0);
 }
