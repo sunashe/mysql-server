@@ -33,7 +33,7 @@
 #include "sql_table.h"                 // primary_key_name
 #include "sql_insert.h"                // Sql_cmd_insert_base
 #include "lex_token.h"
-
+#include "log.h"
 
 extern int HINT_PARSER_parse(THD *thd,
                              Hint_scanner *scanner,
@@ -3795,7 +3795,11 @@ bool st_select_lex_unit::is_mergeable() const
   while ((item= it++))
   {
     if (item->has_subquery() && item->used_tables())
+    {
+      //sql_print_information();
       return false;
+    }
+
   }
   return !select->is_grouped() &&
          !select->having_cond() &&

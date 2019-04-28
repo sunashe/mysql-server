@@ -33,6 +33,7 @@
 #include "opt_explain_format.h"
 #include "sql_test.h"            // print_where
 #include "aggregate_check.h"
+#include "log.h"
 
 static void propagate_nullability(List<TABLE_LIST> *tables, bool nullable);
 
@@ -879,12 +880,23 @@ bool st_select_lex::resolve_derived(THD *thd, bool apply_semijoin)
   {
     for (TABLE_LIST *tl= get_table_list(); tl; tl= tl->next_local)
     {
+      sql_print_information("check table %s for merge",tl->is_alias ? tl->alias:tl->table_name);
       if (!tl->is_view_or_derived() ||
           tl->is_merged() ||
           !tl->is_mergeable())
-      continue;
+      {
+        sql_print_information("table %s can't be merged or no need to merged",tl->is_alias ? tl->alias:tl->table_name);
+        continue;
+      }
+
+      sql_print_information("try to merge table %s",tl->is_alias ? tl->alias:tl->table_name);
       if (merge_derived(thd, tl))
+      {
+        sql_print_information("merge table %s faild.",tl->is_alias ? tl->alias:tl->table_name);
         DBUG_RETURN(true);        /* purecov: inspected */
+      }
+
+//      sql_print_information("merge table %s successfully.",tl->is_alias ? tl->alias:tl->table_name);
     }
   }
 
@@ -2266,7 +2278,12 @@ bool SELECT_LEX::merge_derived(THD *thd, TABLE_LIST *derived_table)
       derived_table->algorithm == VIEW_ALGORITHM_TEMPTABLE ||
       (!thd->optimizer_switch_flag(OPTIMIZER_SWITCH_DERIVED_MERGE) &&
        derived_table->algorithm != VIEW_ALGORITHM_MERGE))
+  {
+    sql_print_information("can't merge table %s, because optimizer_switch::derived_merge == off or view's algorithm",
+                          derived_table->is_alias ? derived_table->alias:derived_table->table_name);
     DBUG_RETURN(false);
+  }
+
 
   SELECT_LEX *const derived_select= derived_unit->first_select();
   /*
@@ -2274,13 +2291,22 @@ bool SELECT_LEX::merge_derived(THD *thd, TABLE_LIST *derived_table)
     that contains semi-join nests
   */
   if ((active_options() & SELECT_STRAIGHT_JOIN) && derived_select->has_sj_nests)
+  {
+    sql_print_information("can't merge table %s, because SELECT_STRAIGHT_JOIN and derived_select has_sj_nests",
+                          derived_table->is_alias ? derived_table->alias:derived_table->table_name);
     DBUG_RETURN(false);
+  }
+
 
   // Check that we have room for the merged tables in the table map:
   if (leaf_table_count + derived_select->leaf_table_count - 1 > MAX_TABLES)
     DBUG_RETURN(false);
 
   derived_table->set_merged();
+  sql_print_information("merge table %s successfully.",
+          derived_table->is_alias ? derived_table->alias:derived_table->table_name);
+
+
 
   DBUG_PRINT("info", ("algorithm: MERGE"));
 
@@ -2697,6 +2723,7 @@ bool SELECT_LEX::flatten_subqueries()
   DBUG_RETURN(FALSE);
 }
 
+#include "log.h"
 /**
   Propagate nullability into inner tables of outer join operation
 
@@ -2711,7 +2738,11 @@ static void propagate_nullability(List<TABLE_LIST> *tables, bool nullable)
   while ((tr= li++))
   {
     if (tr->table && !tr->table->is_nullable() && (nullable || tr->outer_join))
+    {
       tr->table->set_nullable();
+      sql_print_information("set table %s nullable",tr->table_name);
+    }
+
     if (tr->nested_join == NULL)
       continue;
     propagate_nullability(&tr->nested_join->join_list,

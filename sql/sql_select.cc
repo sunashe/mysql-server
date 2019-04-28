@@ -47,6 +47,7 @@
 #include "opt_hints.h"           // hint_key_state()
 
 #include <algorithm>
+#include "log.h"
 
 using std::max;
 using std::min;
@@ -122,6 +123,7 @@ bool handle_query(THD *thd, LEX *lex, Query_result *result,
 
   if (single_query)
   {
+    sql_print_information("single_query = true");
     unit->set_limit(unit->global_parameters());
 
     select->context.resolve_in_select_list= true;
@@ -136,6 +138,8 @@ bool handle_query(THD *thd, LEX *lex, Query_result *result,
   }
   else
   {
+    sql_print_information("single_query = false");
+
     if (unit->prepare(thd, result, SELECT_NO_UNLOCK | added_options,
                       removed_options))
       goto err;
@@ -161,6 +165,7 @@ bool handle_query(THD *thd, LEX *lex, Query_result *result,
 
   if (single_query)
   {
+
     if (select->optimize(thd))
       goto err;
 
@@ -168,6 +173,7 @@ bool handle_query(THD *thd, LEX *lex, Query_result *result,
   }
   else
   {
+
     if (unit->optimize(thd))
       goto err;
   }
