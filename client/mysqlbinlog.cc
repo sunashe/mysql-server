@@ -905,6 +905,13 @@ static bool shall_skip_database(const char *log_dbname)
          strcmp(log_dbname, database);
 }
 
+char* my_care_table_name  =  strdup("wdctjncorg");
+static bool not_care_table_name(const char *table_name)
+{
+	return strcmp(table_name,my_care_table_name);
+}
+
+
 
 /**
   Checks whether the given event should be filtered out,
@@ -1246,6 +1253,11 @@ Exit_status process_event(PRINT_EVENT_INFO *print_event_info, Log_event *ev,
       Query_log_event *qle= (Query_log_event*) ev;
       bool parent_query_skips=
           !qle->is_trans_keyword() && shall_skip_database(qle->db);
+//
+//	    bool parent_query_skips=
+//					    !qle->is_trans_keyword() && shall_skip_database(qle->db);
+
+
       bool ends_group= ((Query_log_event*) ev)->ends_group();
       bool starts_group= ((Query_log_event*) ev)->starts_group();
 
@@ -1527,13 +1539,21 @@ Exit_status process_event(PRINT_EVENT_INFO *print_event_info, Log_event *ev,
     case binary_log::TABLE_MAP_EVENT:
     {
       Table_map_log_event *map= ((Table_map_log_event *)ev);
-      if (shall_skip_database(map->get_db_name()))
-      {
-        print_event_info->skipped_event_in_transaction= true;
-        print_event_info->m_table_map_ignored.set_table(map->get_table_id(), map);
-        destroy_evt= FALSE;
-        goto end;
-      }
+//      if (shall_skip_database(map->get_db_name()))
+//      {
+//        print_event_info->skipped_event_in_transaction= true;
+//        print_event_info->m_table_map_ignored.set_table(map->get_table_id(), map);
+//        destroy_evt= FALSE;
+//        goto end;
+//      }
+
+	    if (not_care_table_name(map->get_table_name()))
+	    {
+		    print_event_info->skipped_event_in_transaction= true;
+		    print_event_info->m_table_map_ignored.set_table(map->get_table_id(), map);
+		    destroy_evt= FALSE;
+		    goto end;
+	    }
     }
     case binary_log::ROWS_QUERY_LOG_EVENT:
     case binary_log::WRITE_ROWS_EVENT:
