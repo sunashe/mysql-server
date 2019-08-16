@@ -5239,9 +5239,10 @@ mysql_real_query(MYSQL *mysql, const char *query, ulong length)
                     DBUG_RETURN(1);
                   });
 
-  if (mysql_send_query(mysql,query,length))
+  if ( (retval = mysql_send_query(mysql,query,length)))
     DBUG_RETURN(1);
-  retval= (int) (*mysql->methods->read_query_result)(mysql);
+  //call read_query_result async.
+//  retval= (int) (*mysql->methods->read_query_result)(mysql);
   DBUG_RETURN(retval);
 }
 
