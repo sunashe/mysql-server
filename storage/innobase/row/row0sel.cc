@@ -5710,7 +5710,10 @@ locks_ok:
 		ib::info() << "ICP_OUT_OF_RANGE\n";
 		goto idx_cond_failed;
 	case ICP_MATCH:
-	  ib::info() << "ICP_MATCH\n";
+		if(prebuilt->idx_cond)
+		{
+			ib::info() << "ICP_MATCH\n";
+		}
 		break;
 	}
 
