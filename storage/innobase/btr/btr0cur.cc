@@ -1019,11 +1019,11 @@ btr_cur_search_to_nth_level(
 
 	page_cursor = btr_cur_get_page_cur(cursor);
 
-	const ulint		space = dict_index_get_space(index);
-	const page_size_t	page_size(dict_table_page_size(index->table));
+	const ulint		space = dict_index_get_space(index);//通过索引获取到space id
+	const page_size_t	page_size(dict_table_page_size(index->table)); //获取页的结构信息
 
 	/* Start with the root page. */
-	page_id_t		page_id(space, dict_index_get_page(index));
+	page_id_t		page_id(space, dict_index_get_page(index));//通过space id,root page number,构建数据页描述符
 
 	if (root_leaf_rw_latch == RW_X_LATCH) {
 		node_ptr_max_size = dict_index_node_ptr_max_size(index);

@@ -262,7 +262,7 @@ btr_node_ptr_get_child_page_no(
 
 	page_no = mach_read_from_4(field);
 	ut_ad(page_no > 1);
-	ib::info() << " page_num: " << page_no;
+	ib::info() << "find child page,page_no: " << page_no;
 
 	return(page_no);
 }

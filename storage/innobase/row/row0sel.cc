@@ -6070,7 +6070,9 @@ next_rec:
 		} else {
 			ib::info() << "move pcur up"  ;
 			move = btr_pcur_move_to_next(pcur, &mtr);
-			ib::info() << "pcur match record heap_no:" << page_rec_get_heap_no(btr_pcur_get_rec(pcur));
+//			ib::info() << "pcur match record heap_no:" << page_rec_get_heap_no(btr_pcur_get_rec(pcur));
+			ib::info() << "pcur match record page_id:" << pcur->btr_cur.page_cur.block->page.id.page_no() << " heap_no:"
+			           << page_rec_get_heap_no(btr_pcur_get_rec(pcur));
 		}
 
 		if (!move) {

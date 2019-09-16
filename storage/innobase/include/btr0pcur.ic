@@ -527,7 +527,8 @@ btr_pcur_open_with_no_init_func(
 
 	cursor->trx_if_known = NULL;
 
-	ib::info() << "pcur match record heap_no:" << page_rec_get_heap_no(btr_pcur_get_rec(cursor));
+	ib::info() << "pcur match record page_id:" << cursor->btr_cur.page_cur.block->page.id.page_no() << " heap_no:"
+	<< page_rec_get_heap_no(btr_pcur_get_rec(cursor));
 
 }
 

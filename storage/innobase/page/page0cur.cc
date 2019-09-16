@@ -567,14 +567,14 @@ up_slot_match:
 			goto up_slot_match;
 		}
 	}
-
+	//从数据页中通过low找到slot.
 	slot = page_dir_get_nth_slot(page, low);
-	low_rec = page_dir_slot_get_rec(slot);
-	slot = page_dir_get_nth_slot(page, up);
+	low_rec = page_dir_slot_get_rec(slot); //找到此slot中最小的用户记录.
+	slot = page_dir_get_nth_slot(page, up);//找到up值对应的slot
 	up_rec = page_dir_slot_get_rec(slot);
 
 	/* Perform linear search until the upper and lower records come to
-	distance 1 of each other. */
+	distance 1 of each other. */ //开始线性搜索
 
 	while (page_rec_get_next_const(low_rec) != up_rec) {
 
