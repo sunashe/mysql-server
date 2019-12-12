@@ -3931,6 +3931,23 @@ void Item_func_conv::fix_length_and_dec()
 {
   collation.set(default_charset());
   max_length=64;
+  switch(collation.collation->number)
+  {
+  	case 33:
+	  {
+	  	max_length *=3;
+	  	break;
+	  }
+	  case 45:
+	  {
+	  	max_length *=4;
+	  	break;
+	  }
+	  default:
+	  {
+	  	//nothing
+	  }
+  }
   maybe_null= 1;
   reject_geometry_args(arg_count, args, this);
 }
