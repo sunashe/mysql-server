@@ -1132,7 +1132,7 @@ lock_rec_has_expl(
 			|| (precise_mode & LOCK_GAP)
 			|| heap_no == PAGE_HEAP_NO_SUPREMUM)) {
 
-			ib::info() << "transaction has a GRANTED explicit lock stronger or equal"
+			ib::info() << "transaction " << trx->id << " has a GRANTED explicit lock stronger or equal"
 						  "to precise_mode heap_no: "
 						  << lock->un_member.rec_lock.space
 						  << ":"
