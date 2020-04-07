@@ -47,6 +47,7 @@
 #include <m_ctype.h>
 #include <hash.h>
 #include <stdarg.h>
+#include <regex.h>
 
 #include "client_priv.h"
 #include "my_default.h"
@@ -55,6 +56,11 @@
 #include "mysqld_error.h"
 
 #include <welcome_copyright_notice.h> /* ORACLE_WELCOME_COPYRIGHT_NOTICE */
+
+#include <sys/types.h>
+#include <regex.h>
+
+
 
 /* Exit codes */
 
@@ -86,6 +92,86 @@
 
 /* Maximum number of fields per table */
 #define MAX_FIELDS 4000
+struct regex_rule
+{
+		char* str;
+		regex_t reg;
+};
+
+typedef struct regex_rule regex_rule;
+struct regex_rule* regex_rule_list = NULL;
+int regex_rule_list_len = 10;
+char table_name_acc_order_chk[] = "acc_order_chk";
+char table_name_acc_order_chk_pattern[] = "acc_order_chk_[0-9]{4}";
+
+char tabe_name_acc_order[] = "acc_order";
+char table_name_acc_order_pattern[] = "acc_order_[0-9]{4}";
+
+char table_name_acc_cddt[] = "acc_cddt";
+char table_name_acc_cddt_pattern[] = "acc_cddt_[0-9]{4}";
+
+char table_name_acc_req_log[] = "acc_req_log";
+char table_name_acc_req_log_parrern[] = "acc_req_log_[0-9]{4}";
+
+void  regex_rule_init(regex_rule* rule, char* str_in,const char* pattern);
+void init_regex_rule_list(int size);
+void  regex_rule_init(regex_rule* rule, char* str_in,const char* pattern);
+
+
+void  regex_rule_init(regex_rule* rule, char* str_in,const char* pattern)
+{
+	int flag = REG_EXTENDED;
+	regcomp(&rule->reg, pattern, flag);
+	rule->str = str_in;
+}
+
+void init_regex_rule_list(int size)
+{
+	regex_rule* rule = NULL;
+	regex_rule_list = (regex_rule*)calloc(sizeof(regex_rule),size);
+	rule = regex_rule_list;
+	regex_rule_init(rule,table_name_acc_order_chk,table_name_acc_order_chk_pattern);
+	rule++;
+	regex_rule_init(rule,tabe_name_acc_order,table_name_acc_order_pattern);
+	rule++;
+	regex_rule_init(rule,table_name_acc_cddt,table_name_acc_cddt_pattern);
+	rule++;
+	regex_rule_init(rule,table_name_acc_req_log,table_name_acc_req_log_parrern);
+}
+
+
+/**
+ *
+ * @param table_name
+ * @return
+ */
+char* target_table_name(const char *table_name)
+{
+	int status = 0;
+	regmatch_t pmatch[1];
+	const size_t nmatch = 1;
+	regex_rule* current_rule = NULL;
+	regex_rule* find = NULL;
+	int i=0;
+//	for(current_rule =  regex_rule_list;current_rule != NULL;current_rule ++){
+		for(i=0;i<regex_rule_list_len;i++){
+		current_rule =  regex_rule_list+i;
+		status = regexec(&current_rule->reg,table_name, nmatch, pmatch, 0);
+		if(status == 0){
+			if(!find){
+				find =  current_rule;
+			}else{
+				return NULL;
+			}
+		}else{
+			continue;
+		}
+	}
+	if(find)
+		return find->str;
+
+	return (char*)table_name;
+}
 
 static void add_load_option(DYNAMIC_STRING *str, const char *option,
                              const char *option_value);
@@ -2644,9 +2730,11 @@ static uint get_table_structure(char *table, char *db, char *table_type,
   my_bool    init=0, write_data, complete_insert;
   my_ulonglong num_fields;
   char       *result_table, *opt_quoted_table;
+  char* new_table_name;
   const char *insert_option;
   char	     name_buff[NAME_LEN+3],table_buff[NAME_LEN*2+3];
   char       table_buff2[NAME_LEN*2+3], query_buff[QUERY_LENGTH];
+  char table_buff_new[NAME_LEN];
   const char *show_fields_stmt= "SELECT `COLUMN_NAME` AS `Field`, "
                                 "`COLUMN_TYPE` AS `Type`, "
                                 "`IS_NULLABLE` AS `Null`, "
@@ -2693,6 +2781,9 @@ static uint get_table_structure(char *table, char *db, char *table_type,
 
   result_table=     quote_name(table, table_buff, 1);
   opt_quoted_table= quote_name(table, table_buff2, 0);
+  new_table_name = target_table_name(table);
+  new_table_name =  quote_name(new_table_name,table_buff_new,1);
+
 
   if (opt_order_by_primary)
     order_by= primary_key_fields(result_table);
@@ -2928,6 +3019,7 @@ static uint get_table_structure(char *table, char *db, char *table_type,
       will have to be performed each time we are appending to
       insert_pat.
     */
+
     if (write_data)
     {
       if (opt_replace_into)
@@ -2936,7 +3028,7 @@ static uint get_table_structure(char *table, char *db, char *table_type,
         dynstr_append_checked(&insert_pat, "INSERT ");
       dynstr_append_checked(&insert_pat, insert_option);
       dynstr_append_checked(&insert_pat, "INTO ");
-      dynstr_append_checked(&insert_pat, opt_quoted_table);
+      dynstr_append_checked(&insert_pat, new_table_name);
       if (complete_insert)
       {
         dynstr_append_checked(&insert_pat, " (");
@@ -6015,7 +6107,7 @@ int main(int argc, char **argv)
   compatible_mode_normal_str[0]= 0;
   default_charset= (char *)mysql_universal_client_charset;
   memset(&ignore_table, 0, sizeof(ignore_table));
-
+	init_regex_rule_list(10);
   exit_code= get_options(&argc, &argv);
   if (exit_code)
   {
